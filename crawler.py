@@ -27,6 +27,8 @@ def parse_cmd_args(args: list):
             if counter >= len(args):
                 log.fatal("Missing value for overwrite option -O:COOKIE-JSESSION-ID.")
             gl.COOKIE_JSESSION_ID = args[counter]
+        elif args[counter] == "-C:IGNORE-CACHE":
+            gl.CONFIG_IGNORE_CACHE = True
         elif args[counter] == "-C:MAX-RETRY":
             counter += 1
             if counter >= len(args) or not args[counter].isdigit():
@@ -82,7 +84,7 @@ def main():
             verbs_counter += 1
             log.info(f"({verbs_counter:>{len(str(total_verbs))}}/{total_verbs}) Processing infinitive: {infinitive}")
 
-            if os.path.exists(f"./output/cache/{infinitive}.txt"):
+            if not gl.CONFIG_IGNORE_CACHE and os.path.exists(f"./output/cache/{infinitive}.txt"):
                 log.info(f"Using cached result for infinitive '{infinitive}'. Skipping search.")
                 continue
 
