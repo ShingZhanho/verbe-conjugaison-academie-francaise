@@ -1,0 +1,15 @@
+## OS Generated
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
+
+# pyenv
+.python-version
+
+# vscode
+.vscode/
+
+# JetBrains IDE
+.idea/
