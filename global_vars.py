@@ -6,6 +6,8 @@ Created by: Jacob Shing
 
 # Global variables
 HEADER_ACCEPT = "application/json, text/javascript, */*; q=0.01"
+HEADER_ACCEPT_ENCODING = "gzip, deflate, br"
+HEADER_ACCEPT_LANGUAGE = "en-GB,en;q=0.9"
 HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded; charset=UTF-8"
 HEADER_SEC_FETCH_SITE = "same-origin"
 HEADER_SEC_FETCH_MODE = "cors"
