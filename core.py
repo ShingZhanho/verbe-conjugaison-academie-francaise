@@ -105,6 +105,37 @@ def search_entry(verb: str, prev_entry_id: str | None = None) -> tuple[str, str]
 
     return None
 
+def download_conjugation(verb: str, verb_id: str, prev_id: str | None = None) -> bool:
+    # temp
+    headers = {
+        "Accept": gl.HEADER_ACCEPT,
+        "Accept-Encoding": gl.HEADER_ACCEPT_ENCODING,
+        "Accept-Language": gl.HEADER_ACCEPT_LANGUAGE,
+        "User-Agent": gl.USER_AGENT,
+        "Content-Type": gl.HEADER_CONTENT_TYPE,
+        "Cookie": f"JSESSIONID={gl.COOKIE_JSESSION_ID}; {gl.HEADER_MISC_COOKIES}",
+        "Sec-Fetch-Site": gl.HEADER_SEC_FETCH_SITE,
+        "Sec-Fetch-Mode": gl.HEADER_SEC_FETCH_MODE,
+        "Sec-Fetch-Dest": gl.HEADER_SEC_FETCH_DEST,
+    }
+    if prev_id:
+        headers["Referer"] = f"{gl.URL_ROOT}article/{prev_id}"
+        headers["Cookie"] += f"; lastEntry={prev_id}"
+
+    try: 
+        response = requests.get(f"{gl.URL_CONJUGATION_TABLE}{verb_id}", headers=headers)
+        if response.status_code != 200:
+            log.warning(f"Failed to download conjugation webpage for verb '{verb}'. Status code: {response.status_code}.")
+            return False
+        response.raise_for_status()  # Raise an error for bad responses
+        with open(f"./output/cache/{verb}.html", "w") as out:
+            out.write(response.text)
+    except Exception as e:
+        log.warning(f"An error occurred while downloading conjugation webpage for verb '{verb}': {e}.")
+        return False
+    
+    return True
+
 def try_update_jsession_id(response, fatal_on_missing = False) -> None:
     """
     Checks if the response contains a new JSESSION_ID and updates the global variable if it does.

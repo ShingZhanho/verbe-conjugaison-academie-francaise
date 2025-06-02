@@ -15,6 +15,7 @@ HEADER_SEC_FETCH_MODE = "cors"
 HEADER_SEC_FETCH_DEST = "empty"
 COOKIE_JSESSION_ID = None # Obtained from the website during runtime
 URL_ROOT = "https://dictionnaire-academie.fr/"
+URL_CONJUGATION_TABLE = f"{URL_ROOT}conjuguer/"
 URL_SEARCH = f"{URL_ROOT}search"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15"
 
