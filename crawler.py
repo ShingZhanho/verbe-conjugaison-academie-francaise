@@ -4,7 +4,7 @@ Created by: Jacob Shing
 """
 
 import core
-from global_vars import USER_AGENT, COOKIE_JSESSION_ID, CONFIG_MAX_RETRY
+from global_vars import USER_AGENT, COOKIE_JSESSION_ID, CONFIG_MAX_RETRY, CONFIG_REQUESTS_DELAY
 import log
 import sys
 
