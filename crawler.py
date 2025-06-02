@@ -4,7 +4,7 @@ Created by: Jacob Shing
 """
 
 import core
-from global_vars import USER_AGENT, COOKIE_JSESSION_ID
+from global_vars import USER_AGENT, COOKIE_JSESSION_ID, CONFIG_MAX_RETRY
 import log
 import sys
 
@@ -16,18 +16,24 @@ def parse_cmd_args(args: list):
     """
     counter = 0
     while counter < len(args):
-        if args[counter] == "-OUSER-AGENT":
+        if args[counter] == "-O:USER-AGENT":
             counter += 1
             if counter >= len(args):
-                log.fatal("Missing value for overwrite option -OUSER-AGENT.")
+                log.fatal("Missing value for overwrite option -O:USER-AGENT.")
             global USER_AGENT
             USER_AGENT = args[counter]
-        elif args[counter] == "-OCOOKIE-JSESSION-ID":
+        elif args[counter] == "-O:COOKIE-JSESSION-ID":
             counter += 1
             if counter >= len(args):
-                log.fatal("Missing value for overwrite option -OCOOKIE-JSESSION-ID.")
+                log.fatal("Missing value for overwrite option -O:COOKIE-JSESSION-ID.")
             global COOKIE_JSESSION_ID
             COOKIE_JSESSION_ID = args[counter]
+        elif args[counter] == "-C:MAX-RETRY":
+            counter += 1
+            if counter >= len(args) or not args[counter].isdigit():
+                log.fatal("Missing or invalid value for configuration option -C:MAX-RETRY.")
+            global CONFIG_MAX_RETRY
+            CONFIG_MAX_RETRY = int(args[counter]) 
         else:
             log.warning(f"Unknown command line option {args[counter]}. Ignored.")
         counter += 1

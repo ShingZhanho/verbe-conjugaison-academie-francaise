@@ -6,8 +6,8 @@ Created by: Jacob Shing
 
 import global_vars as gl
 import log
-import requests
 import re
+import requests
 
 def obtain_jsession_id() -> str|None:
     """
