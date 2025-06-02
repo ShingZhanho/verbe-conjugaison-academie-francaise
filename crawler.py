@@ -3,6 +3,7 @@ Created on: 2025-06-02 12:57:45 HKT
 Created by: Jacob Shing
 """
 
+import log
 import sys
 
 # Global variables
@@ -27,25 +28,25 @@ def parse_cmd_args(args: list):
         if args[counter] == "-OUSER-AGENT":
             counter += 1
             if counter >= len(args):
-                print("ERROR: Missing value for overwrite option -OUSER-AGENT.")
-                exit(1)
+                log.fatal("Missing value for overwrite option -OUSER-AGENT.")
             global USER_AGENT
             USER_AGENT = args[counter]
         elif args[counter] == "-OCOOKIE-JSESSION-ID":
             counter += 1
             if counter >= len(args):
-                print("ERROR: Missing value for overwrite option -OCOOKIE-JSESSION-ID.")
-                exit(1)
+                log.fatal("Missing value for overwrite option -OCOOKIE-JSESSION-ID.")
             global COOKIE_JSESSION_ID
             COOKIE_JSESSION_ID = args[counter]
         else:
-            print(f"WARNING: Unknown command line option {args[counter]}. Ignored.")
+            log.warning(f"Unknown command line option {args[counter]}. Ignored.")
         counter += 1
 
 def main():
     """
     Entry point.
     """
+    log.info("\n\t=== VERBE-CONJUGAISION-ACADÉMIE-FRANÇAISE CRAWLER ===\n\t\tProgram invoked with arguments: " + " ".join(sys.argv[1:]))
+    log.info("Parsing command line arguments...")
     parse_cmd_args(sys.argv[1:])
 
 if __name__ == "__main__":

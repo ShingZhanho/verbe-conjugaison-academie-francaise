@@ -8,6 +8,9 @@ desktop.ini
 # pyenv
 .python-version
 
+# Python runtime
+__pycache__/
+
 # vscode
 .vscode/
 
