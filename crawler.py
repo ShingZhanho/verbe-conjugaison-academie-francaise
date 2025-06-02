@@ -33,7 +33,15 @@ def parse_cmd_args(args: list):
             if counter >= len(args) or not args[counter].isdigit():
                 log.fatal("Missing or invalid value for configuration option -C:MAX-RETRY.")
             global CONFIG_MAX_RETRY
-            CONFIG_MAX_RETRY = int(args[counter]) 
+            CONFIG_MAX_RETRY = int(args[counter])
+        elif args[counter] == "-C:REQUESTS-DELAY":
+            counter += 1
+            if counter >= len(args) or not args[counter].isdigit():
+                log.fatal("Missing or invalid value for configuration option -C:REQUESTS-DELAY.")
+            if (int(args[counter]) < 0):
+                log.fatal("Configuration option -C:REQUESTS-DELAY must be a non-negative integer.")
+            global CONFIG_REQUESTS_DELAY
+            CONFIG_REQUESTS_DELAY = int(args[counter])
         else:
             log.warning(f"Unknown command line option {args[counter]}. Ignored.")
         counter += 1
