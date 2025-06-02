@@ -4,8 +4,9 @@ Created by: Jacob Shing
 """
 
 import core
-from global_vars import USER_AGENT, COOKIE_JSESSION_ID, CONFIG_MAX_RETRY, CONFIG_REQUESTS_DELAY
+import global_vars as gl
 import log
+import os
 import sys
 
 # Handle command line options
@@ -20,28 +21,27 @@ def parse_cmd_args(args: list):
             counter += 1
             if counter >= len(args):
                 log.fatal("Missing value for overwrite option -O:USER-AGENT.")
-            global USER_AGENT
-            USER_AGENT = args[counter]
+            gl.USER_AGENT = args[counter]
         elif args[counter] == "-O:COOKIE-JSESSION-ID":
             counter += 1
             if counter >= len(args):
                 log.fatal("Missing value for overwrite option -O:COOKIE-JSESSION-ID.")
-            global COOKIE_JSESSION_ID
-            COOKIE_JSESSION_ID = args[counter]
+            gl.COOKIE_JSESSION_ID = args[counter]
         elif args[counter] == "-C:MAX-RETRY":
             counter += 1
             if counter >= len(args) or not args[counter].isdigit():
                 log.fatal("Missing or invalid value for configuration option -C:MAX-RETRY.")
-            global CONFIG_MAX_RETRY
-            CONFIG_MAX_RETRY = int(args[counter])
+            gl.CONFIG_MAX_RETRY = int(args[counter])
         elif args[counter] == "-C:REQUESTS-DELAY":
             counter += 1
             if counter >= len(args) or not args[counter].isdigit():
                 log.fatal("Missing or invalid value for configuration option -C:REQUESTS-DELAY.")
-            if (int(args[counter]) < 0):
+            if int(args[counter]) < 0:
                 log.fatal("Configuration option -C:REQUESTS-DELAY must be a non-negative integer.")
-            global CONFIG_REQUESTS_DELAY
-            CONFIG_REQUESTS_DELAY = int(args[counter])
+            gl.CONFIG_REQUESTS_DELAY = int(args[counter])
+        elif args[counter] == "-C:VERBOSE":
+            gl.CONFIG_VERBOSE = True
+            log.verbose("Verbose mode enabled.", gl.CONFIG_VERBOSE)
         else:
             log.warning(f"Unknown command line option {args[counter]}. Ignored.")
         counter += 1
@@ -56,11 +56,46 @@ def main():
 
     # Check if JSESSION_ID is set
     log.info("Checking JSESSION_ID...")
-    global COOKIE_JSESSION_ID
-    if COOKIE_JSESSION_ID is None:
+    if gl.COOKIE_JSESSION_ID is None:
         log.info("JSESSION_ID is not set. Obtaining it from the website...")
-        COOKIE_JSESSION_ID = core.obtain_jsession_id()
-    log.info(f"JSESSION_ID is set to {COOKIE_JSESSION_ID}.")
+        gl.COOKIE_JSESSION_ID = core.obtain_jsession_id()
+    log.info(f"JSESSION_ID is set to {gl.COOKIE_JSESSION_ID}.")
+
+    # Prepare output directories
+    log.info("Preparing output directories...")
+    if not os.path.exists("./output"):
+        os.makedirs("./output")
+    if not os.path.exists("./output/cache"):
+        os.makedirs("./output/cache")
+
+    total_verbs = 0
+    verbs_counter = 0
+    with open("./infinitives.txt", "rb") as f:
+        total_verbs = sum(1 for _ in f)
+    
+    # iterate over the verb infinitives from infinitives.txt
+    with open("./infinitives.txt", "r", encoding="utf-8") as f:
+        prev_id = None
+
+        for infinitive in f:
+            infinitive = infinitive.strip()
+            verbs_counter += 1
+            log.info(f"({verbs_counter:>{len(str(total_verbs))}}/{total_verbs}) Processing infinitive: {infinitive}")
+
+            if os.path.exists(f"./output/cache/{infinitive}.txt"):
+                log.info(f"Using cached result for infinitive '{infinitive}'. Skipping search.")
+                continue
+
+            search = core.search_entry(infinitive, prev_id)
+            if search is None:
+                log.warning(f"Failed to find entry for infinitive '{infinitive}'. Skipping this verb.")
+                with open(f"./output/cache/{infinitive}.txt", "w", encoding="utf-8") as out:
+                    out.write(f"NOT_FOUND_SKIPPED")
+                continue
+            verb_id, verb_nature = search
+            log.info(f"Found verb ID: {verb_id}, Nature: {verb_nature} for infinitive '{infinitive}'.")
+
+            prev_id = verb_id
 
 if __name__ == "__main__":
     main()

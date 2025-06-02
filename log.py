@@ -35,3 +35,10 @@ def fatal(message: str, exit_code: int = 1) -> None:
     """
     _write_log(message, tag="FATAL", ansi_seq="\033[1;31m")
     exit(exit_code)
+
+def verbose(message: str, verbose_enabled: bool = False) -> None:
+    """
+    Writes a verbose log message to stdout if verbose mode is enabled.
+    """
+    if verbose_enabled:
+        _write_log(message, tag="VERBOSE", ansi_seq="\033[1;34m")
