@@ -94,3 +94,9 @@ The script attempts to obtain it automatically, but you may overwrite it manuall
 Set this to a higher value if the server blocks your IP for too many requests.
 
 - `-C:VERBOSE` - Enable verbose output to see more details about the script's execution.
+
+> [!note]
+> Running the script against the full list of verbs can take up to 8 hours.
+> You are suggested to run the script with a subset of verbs that you need, and use the
+> uploaded files in the [Releases](https://github.com/ShingZhanho/verbe-conjugaison-academie-francaise/releases)
+> section for the full list of verbs.
