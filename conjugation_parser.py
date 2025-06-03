@@ -188,13 +188,13 @@ def __parse_tense_table(table_rows_tags) -> dict:
         reflexive_pronoun_tag = row.find("td", class_="conj_refl-pron")
         reflexive_pronoun = reflexive_pronoun_tag.text.strip() if reflexive_pronoun_tag else ""
         reflexive_pronoun = reflexive_pronoun.replace("’", "'")  # Normalize apostrophes
-        if "'" not in reflexive_pronoun:
+        if reflexive_pronoun != "" and "'" not in reflexive_pronoun:
             reflexive_pronoun += " "
 
         auxiliary_verb_tag = row.find("td", class_="conj_auxil")
         auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
 
-        conjugated_verb_tag = repr(row.find("td", class_="conj_verb").stripped_strings[0])
+        conjugated_verb_tag = str(list(row.find("td", class_="conj_verb").stripped_strings)[0])
         conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
         conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
 
@@ -204,7 +204,7 @@ def __parse_tense_table(table_rows_tags) -> dict:
 
         result[pronoun_key] = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb}"
         if rectified_conjugated_verb:
-            result[pronoun_key] =  f"{result[pronoun_key]},{rectified_conjugated_verb}"
+            result[pronoun_key] =  f"{result[pronoun_key]},{reflexive_pronoun}{auxiliary_verb}{rectified_conjugated_verb}"
 
     return result
 
@@ -226,7 +226,7 @@ def __parse_imperative_table(table_rows_tags) -> dict:
         auxiliary_verb_tag = row.find("td", class_="conj_auxil")
         auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
 
-        conjugated_verb_tag = repr(row.find("td", class_="conj_verb").stripped_strings[0])
+        conjugated_verb_tag = str(list(row.find("td", class_="conj_verb").stripped_strings)[0])
         conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
         conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
 
