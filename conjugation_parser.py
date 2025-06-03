@@ -30,7 +30,7 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | Non
             voix_active_etre = voix_active
 
     # Look for div.voix_pron for reflexive verbs
-    voix_pron = root_tag.find("div", id="voix_pron")
+    voix_pron = root_tag.find("div", id="voix_prono")
 
     # Parse each voice
     if voix_active_avoir is not None:
@@ -41,7 +41,7 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | Non
         result[verb]["voix_active_être"] = __parse_conjugation_div(voix_active_etre, 1)
     if voix_pron is not None:
         log.info(f"Parsing reflexive voice...")
-        result[verb]["voix_pron"] = __parse_conjugation_div(voix_pron, 2)
+        result[verb]["voix_prono"] = __parse_conjugation_div(voix_pron, 2)
         
     return result if len(result[verb]) > 0 else None
 
@@ -83,10 +83,10 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
     result = {}
 
     # Find all moods within the div
-    indicatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'pron'}_ind")
-    subjonctif_div      = div_tag.find("div", id=f"{'active' if type == 1 else 'pron'}_sub")
-    conditionnel_div    = div_tag.find("div", id=f"{'active' if type == 1 else 'pron'}_con")
-    imperatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'pron'}_imp")
+    indicatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_ind")
+    subjonctif_div      = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_sub")
+    conditionnel_div    = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_con")
+    imperatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_imp")
 
     if indicatif_div is not None:
         log.info(f"Parsing indicative mood...")
@@ -187,12 +187,15 @@ def __parse_tense_table(table_rows_tags) -> dict:
             continue
         reflexive_pronoun_tag = row.find("td", class_="conj_refl-pron")
         reflexive_pronoun = reflexive_pronoun_tag.text.strip() if reflexive_pronoun_tag else ""
+        reflexive_pronoun = reflexive_pronoun.replace("’", "'")  # Normalize apostrophes
+        if "'" not in reflexive_pronoun:
+            reflexive_pronoun += " "
 
         auxiliary_verb_tag = row.find("td", class_="conj_auxil")
         auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
 
-        conjugated_verb_tag = row.find("td", class_="conj_verb")
-        conjugated_verb = conjugated_verb_tag.text.strip() if conjugated_verb_tag else ""
+        conjugated_verb_tag = repr(row.find("td", class_="conj_verb").stripped_strings[0])
+        conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
         conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
 
         rectified_conjugated_verb_tag = row.find("span", class_="forme_rectif")  # may have alternative (1990 orthographic reform)
@@ -217,13 +220,16 @@ def __parse_imperative_table(table_rows_tags) -> dict:
         "tu": None, "nous": None, "vous": None,
     }
     for index, row in enumerate(table_rows_tags):
+        reflexive_pronoun_tag = row.find("td", class_="conj_refl-pron")
+        reflexive_pronoun = (reflexive_pronoun_tag.text.strip() + " ") if reflexive_pronoun_tag else ""
+
         auxiliary_verb_tag = row.find("td", class_="conj_auxil")
         auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
 
-        conjugated_verb_tag = row.find("td", class_="conj_verb")
-        conjugated_verb = conjugated_verb_tag.text.strip() if conjugated_verb_tag else ""
+        conjugated_verb_tag = repr(row.find("td", class_="conj_verb").stripped_strings[0])
+        conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
         conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
 
         key = "tu" if index == 0 else "nous" if index == 1 else "vous"
-        result[key] = f"{auxiliary_verb}{conjugated_verb}"
+        result[key] = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb}"
     return result
