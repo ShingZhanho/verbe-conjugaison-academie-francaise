@@ -179,6 +179,7 @@ def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
     with open(f"./output/cache/{verb}.txt", "w", encoding="utf-8") as out:
         out.write(formatted_json)
     min_json = json.dumps(parsed, ensure_ascii=False, separators=(',', ':'), indent=None)
+    min_json = min_json.replace("  ", " ").replace("’", "'")  # Replace double spaces and apostrophes
     with open(f"./output/parsed/{verb}.txt", "w", encoding="utf-8") as out:
         out.write(min_json[1:-1])  # Remove the outer braces
     

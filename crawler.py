@@ -5,6 +5,7 @@ Created by: Jacob Shing
 
 import core
 import global_vars as gl
+import json
 import log
 import os
 import sys
@@ -114,6 +115,23 @@ def main():
                 log.error(f"Failed to parse conjugation page for verb '{infinitive}'. Manual entry may be required.")
                 with open(f"./output/cache/{infinitive}.txt", "w", encoding="utf-8") as out:
                     out.write(f"PARSE_FAILED")
+        
+        # == MERGE ALL PARTIAL JSON FILES ==
+        with open("./output/verbs.min.json", "w", encoding="utf-8") as out:
+            parsed = sorted(os.listdir("./output/parsed"))
+            log.info(f"Merging all parsed ({len(parsed)}) entries...")
+            out.write("{")
+            for i, file in enumerate(parsed):
+                with open(f"./output/parsed/{file}", "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    out.write(content)
+                    if i < len(parsed) - 1:
+                        out.write(",")
+            out.write("}")
+        with open("./output/verbs.min.json", "r", encoding="utf-8") as min_file:
+            min_data = json.load(min_file)
+        with open("./output/verbs.json", "w", encoding="utf-8") as out:
+            json.dump(min_data, out, ensure_ascii=False, indent=4)
 
 if __name__ == "__main__":
     main()
