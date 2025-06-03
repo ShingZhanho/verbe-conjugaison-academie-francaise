@@ -4,6 +4,8 @@ Created at: 2025-06-02 13:59:27 HKT
 Created by: Jacob Shing
 """
 
+from bs4 import BeautifulSoup
+import conjugation_parser as conj
 import global_vars as gl
 import log
 import re
@@ -143,6 +145,30 @@ def download_conjugation(verb: str, verb_id: str, prev_id: str | None = None) ->
         return False
     
     return True
+
+def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
+    """
+    Parses the conjugation webpage for a given verb and extracts the conjugation data.
+    Args:
+        verb (str): The infinitive form of the verb.
+        verb_id (str): The ID of the verb entry in the dictionary.
+        verb_nature (str): The verb nature information returned from dictionary search.
+    Returns:
+        bool: True if the parsing was successful, False otherwise.
+    """
+    try:  # read file and parse html
+        with open(f"./output/cache/{verb}.html", "r", encoding="utf-8") as f:
+            conj_page_soup = BeautifulSoup(f, "lxml")
+        if conj_page_root := conj_page_soup.find("div", id=verb_id) is None:
+            log.warning(f"Conjugation page for verb '{verb}' does not contain the expected div with ID '{verb_id}'.")
+            return False
+    except Exception as e:
+        log.warning(f"An error occurred while reading the conjugation page for verb '{verb}': {e}.")
+        return False
+    
+    conj.parse_conjugation_table(conj_page_root, verb, verb_nature)
+    
+    return False
 
 def try_update_jsession_id(response, fatal_on_missing = False) -> None:
     """
