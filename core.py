@@ -98,6 +98,8 @@ def search_entry(verb: str, prev_entry_id: str | None = None) -> tuple[str, str]
             entry_url = entry.get("url")
             entry_label = entry.get("label")
             entry_nature = entry.get("nature")
+            if "v." not in entry_nature:  # ensure the entry is a verb
+                continue
             if entry_label != verb: # look for the exact match
                 continue
             entry_id = entry_url.split("/")[-1]  # Extract the entry ID from the URL
