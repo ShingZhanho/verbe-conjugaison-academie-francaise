@@ -106,7 +106,15 @@ def search_entry(verb: str, prev_entry_id: str | None = None) -> tuple[str, str]
     return None
 
 def download_conjugation(verb: str, verb_id: str, prev_id: str | None = None) -> bool:
-    # temp
+    """
+    Downloads the conjugation webpage for a given verb.
+    Args:
+        verb (str): The infinitive form of the verb.
+        verb_id (str): The ID of the verb entry in the dictionary.
+        prev_id (str, optional): The previous entry ID to continue from. Defaults to None.
+    Returns:
+        bool: True if the download was successful, False otherwise.
+    """
     headers = {
         "Accept": gl.HEADER_ACCEPT,
         "Accept-Encoding": gl.HEADER_ACCEPT_ENCODING,
