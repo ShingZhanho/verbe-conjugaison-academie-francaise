@@ -18,10 +18,11 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | Non
     """
     result = { verb: {} }
 
+    voix_active_avoir = root_tag.find("div", id="voix_active_avoir")
+    voix_active_etre = root_tag.find("div", id="voix_active_être")
     # Look for div.voix_active_être / div.voix_active_avoir / div.voix_active
     # If only div.voix_active is present, try to determine the auxiliary from the table content
-    if (voix_active_avoir := root_tag.find("div", id="voix_active_avoir")) is None \
-        and (voix_active_etre := root_tag.find("div", id="voix_active_être")) is None:
+    if voix_active_avoir is None and voix_active_etre is None:
         voix_active = root_tag.find("div", id="voix_active")
         if (guessed_aux := __guess_auxiliary(voix_active)) == 1:  # Avoir
             voix_active_avoir = voix_active
