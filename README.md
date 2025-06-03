@@ -65,6 +65,12 @@ Under each tense, six persons are provided:
 All verb conjugations are in masculine forms. For impersonal verbs, only the third person singular
 and plural are conjugated, but the keys of other persons are still present, with values being `null`.
 
+> [!note]
+> **Support for French Orthography Reform (retification orthographique du français)**
+> Some verbs may have more than one conjugation form due to the orthography reforms.
+> The two forms accepted by the AF dictionary are both included in the same key,
+> separated by a comma (`,`).
+
 ## Running the Script
 
 ```shell
