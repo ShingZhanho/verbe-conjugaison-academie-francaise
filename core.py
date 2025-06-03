@@ -7,6 +7,7 @@ Created by: Jacob Shing
 from bs4 import BeautifulSoup
 import conjugation_parser as conj
 import global_vars as gl
+import json
 import log
 import re
 import requests
@@ -159,16 +160,27 @@ def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
     try:  # read file and parse html
         with open(f"./output/cache/{verb}.html", "r", encoding="utf-8") as f:
             conj_page_soup = BeautifulSoup(f, "lxml")
-        if conj_page_root := conj_page_soup.find("div", id=verb_id) is None:
+        if (conj_page_root := conj_page_soup.find("div", id=verb_id)) is None:
             log.warning(f"Conjugation page for verb '{verb}' does not contain the expected div with ID '{verb_id}'.")
             return False
     except Exception as e:
         log.warning(f"An error occurred while reading the conjugation page for verb '{verb}': {e}.")
         return False
     
-    conj.parse_conjugation_table(conj_page_root, verb, verb_nature)
+    parsed = conj.parse_conjugation_table(conj_page_root, verb, verb_nature)
+
+    if parsed is None:
+        log.warning(f"No conjugation data found for verb '{verb}'.")
+        return False
+
+    formatted_json = json.dumps(parsed, ensure_ascii=False, indent=4)
+    with open(f"./output/cache/{verb}.txt", "w", encoding="utf-8") as out:
+        out.write(formatted_json)
+    min_json = json.dumps(parsed, ensure_ascii=False, separators=(',', ':'), indent=None)
+    with open(f"./output/parsed/{verb}.txt", "w", encoding="utf-8") as out:
+        out.write(min_json[1:-1])  # Remove the outer braces
     
-    return False
+    return True
 
 def try_update_jsession_id(response, fatal_on_missing = False) -> None:
     """

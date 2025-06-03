@@ -65,10 +65,12 @@ def main():
 
     # Prepare output directories
     log.info("Preparing output directories...")
-    if not os.path.exists("./output"):
-        os.makedirs("./output")
-    if not os.path.exists("./output/cache"):
-        os.makedirs("./output/cache")
+    out_dirs = [
+        "./output",
+        "./output/cache",
+        "./output/parsed",
+    ]
+    [os.makedirs(dir, exist_ok=True) for dir in out_dirs if not os.path.exists(dir)]
 
     total_verbs = 0
     verbs_counter = 0
@@ -105,6 +107,13 @@ def main():
                 prev_id = verb_id
                 log.info(f"Downloading conjugation webpage for verb {infinitive} ({verb_id})...")
                 core.download_conjugation(infinitive, verb_id, prev_id)
+
+            # == PROCESS THE HTML FILE AND GENERATE PARTIAL JSON ==
+            parse_success = core.parse_conjugation_page(infinitive, verb_id, verb_nature)
+            if not parse_success:
+                log.error(f"Failed to parse conjugation page for verb '{infinitive}'. Manual entry may be required.")
+                with open(f"./output/cache/{infinitive}.txt", "w", encoding="utf-8") as out:
+                    out.write(f"PARSE_FAILED")
 
 if __name__ == "__main__":
     main()

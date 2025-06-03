@@ -6,7 +6,7 @@ Created by: Jacob Shing
 
 import log
 
-def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict:
+def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | None:
     """
     Parses the conjugation table from the HTML element.
     Args:
@@ -14,22 +14,22 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict:
         verb (str): The verb being conjugated.
         verb_nature (str): The nature of the verb returned from dictionary search.
     Returns:
-        dict: A dictionary containing the parsed conjugation data.
+        dict: A dictionary containing the parsed conjugation data. None if no conjugation data is found.
     """
     result = { verb: {} }
 
     # Look for div.voix_active_être / div.voix_active_avoir / div.voix_active
     # If only div.voix_active is present, try to determine the auxiliary from the table content
-    if (voix_active_avoir := root_tag.find("div", class_="voix_active_avoir")) is None \
-        or (voix_active_etre := root_tag.find("div", class_="voix_active_être")) is None:
-        voix_active = root_tag.find("div", class_="voix_active")
+    if (voix_active_avoir := root_tag.find("div", id="voix_active_avoir")) is None \
+        and (voix_active_etre := root_tag.find("div", id="voix_active_être")) is None:
+        voix_active = root_tag.find("div", id="voix_active")
         if (guessed_aux := __guess_auxiliary(voix_active)) == 1:  # Avoir
             voix_active_avoir = voix_active
         elif guessed_aux == 2:  # Être
             voix_active_etre = voix_active
 
     # Look for div.voix_pron for reflexive verbs
-    voix_pron = root_tag.find("div", class_="voix_pron")
+    voix_pron = root_tag.find("div", id="voix_pron")
 
     # Parse each voice
     if voix_active_avoir is not None:
@@ -42,7 +42,7 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict:
         log.info(f"Parsing reflexive voice...")
         result[verb]["voix_pron"] = __parse_conjugation_div(voix_pron, 2)
         
-    return result
+    return result if len(result[verb]) > 0 else None
 
 def __guess_auxiliary(voix_active_tag) -> int:
     """
@@ -104,17 +104,18 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
         log.warning(f"The verb does not seem to contain a conditional mood. This might be an error.")
     if imperatif_div is not None:
         log.info(f"Parsing imperative mood...")
-        result["impératif"] = __parse_mood_div(imperatif_div)
+        result["impératif"] = __parse_mood_div(imperatif_div, True)
     else:
         log.warning(f"The verb does not seem to contain an imperative mood. This might be an error.")
 
     return result
 
-def __parse_mood_div(div_tag) -> dict:
+def __parse_mood_div(div_tag, is_imperatif: bool = False) -> dict:
     """
     (Internal) Parses a mood div tag and extracts the conjugation data for all tenses within that mood.
     Args:
         div_tag: The HTML element containing the mood div (`div#active_`).
+        is_imperatif (bool): Whether the mood is imperative. Defaults to False.
     Returns:
         dict: A dictionary containing the conjugation data for all tenses within that mood.
     """
@@ -133,5 +134,95 @@ def __parse_mood_div(div_tag) -> dict:
         "passé simple": "passé_simple",
         "passé antérieur": "passé_antérieur",
     }
+    for tense_div in tense_divs:
+        tense_name = tense_div.find("h4", class_="relation").text.strip().lower()
+        tense_name_key = tense_name_key_map.get(tense_name, None)
+        if tense_name_key is None:
+            log.warning(f"Unknown tense '{tense_name}' found in mood div. Skipping.")
+            continue
+        tense_table_rows = tense_div.find_all("tr", class_="conj_line")
+        if is_imperatif:
+            result[tense_name_key] = __parse_imperative_table(tense_table_rows)
+        else:
+            result[tense_name_key] = __parse_tense_table(tense_table_rows)
 
+    return result
+
+def __parse_tense_table(table_rows_tags) -> dict:
+    """
+    (Internal) Parses a tense table for all pronouns and their conjugations.
+    Args:
+        table_rows_tags: The HTML elements containing the rows of the tense table.
+    Returns:
+        dict: A dictionary containing the conjugation data for all pronouns in the tense.
+    """
+    result: dict[str, str | None] = {
+        "je": None, "tu": None, "il": None, "nous": None, "vous": None, "ils": None,
+    }
+
+    def __map_pronoun_to_key(pronoun: str):
+        pronoun = pronoun.strip().lower()
+        if "j" in pronoun:
+            return "je"
+        elif "t" in pronoun:
+            return "tu"
+        elif "ils" in pronoun or "elles" in pronoun:  # Keep only masculine form
+            return "ils"
+        elif "il" in pronoun or "elle" in pronoun:    # Keep only masculine form
+            return "il"
+        elif "nous" in pronoun:
+            return "nous"
+        elif "vous" in pronoun:
+            return "vous"
+        return None
+
+    for row in table_rows_tags:
+        if (conj_pp := row.find("span", class_="conj_pp")) is None:
+            log.warning(f"Row does not contain a pronoun. Skipping.")
+            continue
+        pronoun_key = __map_pronoun_to_key(conj_pp.text)
+        if pronoun_key is None:
+            log.warning(f"Unknown pronoun found in tense table. Skipping.")
+            continue
+        reflexive_pronoun_tag = row.find("td", class_="conj_refl-pron")
+        reflexive_pronoun = reflexive_pronoun_tag.text.strip() if reflexive_pronoun_tag else ""
+
+        auxiliary_verb_tag = row.find("td", class_="conj_auxil")
+        auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
+
+        conjugated_verb_tag = row.find("td", class_="conj_verb")
+        conjugated_verb = conjugated_verb_tag.text.strip() if conjugated_verb_tag else ""
+        conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
+
+        rectified_conjugated_verb_tag = row.find("span", class_="forme_rectif")  # may have alternative (1990 orthographic reform)
+        rectified_conjugated_verb = rectified_conjugated_verb_tag.text.strip() if rectified_conjugated_verb_tag else ""
+        rectified_conjugated_verb = rectified_conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
+
+        result[pronoun_key] = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb}"
+        if rectified_conjugated_verb:
+            result[pronoun_key] =  f"{result[pronoun_key]},{rectified_conjugated_verb}"
+
+    return result
+
+def __parse_imperative_table(table_rows_tags) -> dict:
+    """
+    (Internal) Parses the imperative tense table for all pronouns and their conjugations.
+    Args:
+        table_rows_tags: The HTML elements containing the rows of the imperative tense table.
+    Returns:
+        dict: A dictionary containing the conjugation data for all pronouns in the imperative tense.
+    """
+    result: dict[str, str | None] = {
+        "tu": None, "nous": None, "vous": None,
+    }
+    for index, row in enumerate(table_rows_tags):
+        auxiliary_verb_tag = row.find("td", class_="conj_auxil")
+        auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
+
+        conjugated_verb_tag = row.find("td", class_="conj_verb")
+        conjugated_verb = conjugated_verb_tag.text.strip() if conjugated_verb_tag else ""
+        conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
+
+        key = "tu" if index == 0 else "nous" if index == 1 else "vous"
+        result[key] = f"{auxiliary_verb}{conjugated_verb}"
     return result
