@@ -1,6 +1,6 @@
 # verbe-conjugaison-académie-française
 
-This repository hosts a list of French verbs with their conjugations, obtained from the Académie Française's (AF) dictionary,
+This repository hosts a list of French verbs with their conjugations, obtained from the Académie française's (AF) dictionary,
 and also the Python scripts used to generate the conjugation tables.
 
 The list of verb infinitives (`infinitives.txt`) is based on the file `verbs.json` from the repository
@@ -73,6 +73,7 @@ and plural are conjugated, but the keys of other persons are still present, with
 
 > [!note]
 > **Support for French Orthography Reform (retification orthographique du français)**
+> 
 > Some verbs may have more than one conjugation form due to the orthography reforms.
 > The two forms accepted by the AF dictionary are both included in the same key,
 > separated by a comma (`,`).
