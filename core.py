@@ -175,9 +175,6 @@ def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
         log.warning(f"No conjugation data found for verb '{verb}'.")
         return False
 
-    formatted_json = json.dumps(parsed, ensure_ascii=False, indent=4)
-    with open(f"./output/cache/{verb}.txt", "w", encoding="utf-8") as out:
-        out.write(formatted_json)
     min_json = json.dumps(parsed, ensure_ascii=False, separators=(',', ':'), indent=None)
     min_json = min_json.replace("  ", " ").replace("’", "'")  # Replace double spaces and apostrophes
     with open(f"./output/parsed/{verb}.txt", "w", encoding="utf-8") as out:

@@ -90,10 +90,21 @@ def main():
             verbs_counter += 1
 
             log.verbose(f"({verbs_counter:>{len(str(total_verbs))}}/{total_verbs}) Checking infinitive cache: {infinitive}", gl.CONFIG_VERBOSE)
+            # == CHECK IF ALREADY PARSED ==
+            if not gl.CONFIG_IGNORE_CACHE and os.path.exists(f"./output/parsed/{infinitive}.txt"):
+                log.verbose(f"Verb '{infinitive}' already parsed. Skipping.", gl.CONFIG_VERBOSE)
+                continue
+
             # == SEARCH IF THE VERB EXISTS IN THE DICTIONARY ==
             if not gl.CONFIG_IGNORE_CACHE and os.path.exists(f"./output/cache/{infinitive}.txt"):
-                log.verbose(f"Using cached result for infinitive '{infinitive}'. Skipping.", gl.CONFIG_VERBOSE)
-                continue
+                log.verbose(f"Using cached result for infinitive '{infinitive}'.", gl.CONFIG_VERBOSE)
+                with open(f"./output/cache/{infinitive}.txt", "r", encoding="utf-8") as out:
+                    content = out.read().strip()
+                if content == "NOT_FOUND_SKIPPED" or content == "PARSE_FAILED":
+                    continue
+                else:
+                    verb_id, verb_nature = content.split("\n")
+                    log.info(f"Cached verb ID: {verb_id}, Nature: {verb_nature}.")
             else:
                 log.info(f"({verbs_counter:>{len(str(total_verbs))}}/{total_verbs}) Processing: {infinitive}")
                 search = core.search_entry(infinitive, prev_id)
@@ -104,6 +115,8 @@ def main():
                     continue
                 verb_id, verb_nature = search
                 log.info(f"Found verb ID: {verb_id}, Nature: {verb_nature} for infinitive '{infinitive}'.")
+                with open(f"./output/cache/{infinitive}.txt", "w", encoding="utf-8") as out:
+                    out.write(f"{verb_id}\n{verb_nature}")
 
             # == DOWNLOAD THE CONJUGATION WEBPAGE ==
             if not gl.CONFIG_IGNORE_CACHE and os.path.exists(f"./output/cache/{infinitive}.html"):
@@ -124,7 +137,7 @@ def main():
     
     # == MERGE ALL PARTIAL JSON FILES ==
     with open("./output/verbs.min.json", "w", encoding="utf-8") as out:
-        parsed = sorted(os.listdir("./output/parsed"))
+        parsed = sorted([f for f in os.listdir("./output/parsed") if ".txt" in f])
         log.info(f"Merging all parsed ({len(parsed)}) entries...")
         out.write("{")
         for i, file in enumerate(parsed):

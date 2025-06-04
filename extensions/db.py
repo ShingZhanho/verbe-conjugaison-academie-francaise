@@ -36,7 +36,8 @@ def generate_sqlite_db(loaded_json):
     con_present VARCHAR(255),
     con_passe VARCHAR(255),
     imp_present VARCHAR(255),
-    imp_passe VARCHAR(255)"""
+    imp_passe VARCHAR(255),
+    h_aspire BOOLEAN DEFAULT 0"""
     for voice in ["ACTIVE_AVOIR", "ACTIVE_ETRE", "PRONOMINAL"]:
         cursor.execute(f"CREATE TABLE {voice} ({column_defs})")
 
@@ -69,7 +70,8 @@ def generate_sqlite_db(loaded_json):
                 "con_present": None,
                 "con_passe": None,
                 "imp_present": None,
-                "imp_passe": None
+                "imp_passe": None,
+                "h_aspire": verb_dict.get("h_aspiré", False)
             }
             # Indicative mood
             if (ind_data := voice_moods.get("indicatif", None)) is not None:
@@ -101,6 +103,8 @@ def generate_sqlite_db(loaded_json):
                     # Escape single quotes and surround with single quotes
                     conjugation_data[key] = f"'{conjugation_data[key].replace("'", "''")}'"
                     continue
+                if key == "h_aspire":
+                    continue  # h_aspire is a boolean, handled separately
                 if conjugation_data[key] is None:
                     conjugation_data[key] = "NULL"
                 else:
@@ -142,7 +146,8 @@ def generate_sqlite_db(loaded_json):
                 {conjugation_data['con_present']},
                 {conjugation_data['con_passe']},
                 {conjugation_data['imp_present']},
-                {conjugation_data['imp_passe']}
+                {conjugation_data['imp_passe']},
+                {'1' if conjugation_data['h_aspire'] else '0'}
             )"""
             log.verbose(f"Executing SQL command: {sql_command}", gl.CONFIG_VERBOSE)
             cursor.execute(sql_command)

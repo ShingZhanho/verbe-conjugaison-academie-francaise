@@ -32,6 +32,10 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | Non
     # Look for div.voix_pron for reflexive verbs
     voix_pron = root_tag.find("div", id="voix_prono")
 
+    if voix_active_avoir is None and voix_active_etre is None and voix_pron is None:
+        log.warning(f"No conjugation data found for verb '{verb}'. Skipping parsing.")
+        return None
+
     # Parse each voice
     if voix_active_avoir is not None:
         log.info(f"Parsing active voice with auxiliary 'avoir'...")
@@ -42,6 +46,13 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | Non
     if voix_pron is not None:
         log.info(f"Parsing reflexive voice...")
         result[verb]["voix_prono"] = __parse_conjugation_div(voix_pron, 2)
+
+    # Check for "h aspiré"
+    log.info(f"Checking for 'h aspiré'...")
+    if verb[0] != 'h':
+        result[verb]["h_aspiré"] = False
+    else:
+        result[verb]["h_aspiré"] = "H aspiré" in root_tag.text
         
     return result if len(result[verb]) > 0 else None
 
