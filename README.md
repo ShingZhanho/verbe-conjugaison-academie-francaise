@@ -33,6 +33,9 @@ Under each infinitive, at most three voices are provided:
 
 Passive voice is not covered.
 
+There is another extra key `h_aspiré` at the same level as the voices, which indicates whether the verb
+begins with an "h aspiré". This value is boolean.
+
 Under each voice, at most four moods and all of their tenses are included:
 1. `indicatif` - indicative mood
     - `présent`
@@ -108,6 +111,7 @@ The columns of each table are identical, they are:
 - `con_passe` - Conditionnel, passé
 - `imp_present` - Impératif, présent
 - `imp_passe` - Impératif, passé
+- `h_aspire` - Whether the verb begins with an "h aspiré" (boolean - `1` for true, `0` for false)
 
 Each cell, **except for impératif**, contains the conjugation of the verb of all six persons,
 in the order of `je`, `tu`, `il`, `nous`, `vous`, `ils`,
