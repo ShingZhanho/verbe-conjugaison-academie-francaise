@@ -4,6 +4,7 @@ Created by: Jacob Shing
 """
 
 import core
+import extensions.db as ext_db
 import global_vars as gl
 import json
 import log
@@ -45,6 +46,8 @@ def parse_cmd_args(args: list):
         elif args[counter] == "-C:VERBOSE":
             gl.CONFIG_VERBOSE = True
             log.verbose("Verbose mode enabled.", gl.CONFIG_VERBOSE)
+        elif args[counter] == "-E:GEN-SQLITE3":
+            gl.EXTENSION_GEN_SQLITE3 = True
         else:
             log.warning(f"Unknown command line option {args[counter]}. Ignored.")
         counter += 1
@@ -85,13 +88,14 @@ def main():
         for infinitive in f:
             infinitive = infinitive.strip()
             verbs_counter += 1
-            log.info(f"({verbs_counter:>{len(str(total_verbs))}}/{total_verbs}) Processing infinitive: {infinitive}")
 
+            log.verbose(f"({verbs_counter:>{len(str(total_verbs))}}/{total_verbs}) Checking infinitive cache: {infinitive}", gl.CONFIG_VERBOSE)
             # == SEARCH IF THE VERB EXISTS IN THE DICTIONARY ==
             if not gl.CONFIG_IGNORE_CACHE and os.path.exists(f"./output/cache/{infinitive}.txt"):
-                log.info(f"Using cached result for infinitive '{infinitive}'. Skipping.")
+                log.verbose(f"Using cached result for infinitive '{infinitive}'. Skipping.", gl.CONFIG_VERBOSE)
                 continue
             else:
+                log.info(f"({verbs_counter:>{len(str(total_verbs))}}/{total_verbs}) Processing: {infinitive}")
                 search = core.search_entry(infinitive, prev_id)
                 if search is None:
                     log.warning(f"Failed to find entry for infinitive '{infinitive}'. Skipping this verb.")
@@ -115,23 +119,32 @@ def main():
                 log.error(f"Failed to parse conjugation page for verb '{infinitive}'. Manual entry may be required.")
                 with open(f"./output/cache/{infinitive}.txt", "w", encoding="utf-8") as out:
                     out.write(f"PARSE_FAILED")
-        
-        # == MERGE ALL PARTIAL JSON FILES ==
-        with open("./output/verbs.min.json", "w", encoding="utf-8") as out:
-            parsed = sorted(os.listdir("./output/parsed"))
-            log.info(f"Merging all parsed ({len(parsed)}) entries...")
-            out.write("{")
-            for i, file in enumerate(parsed):
-                with open(f"./output/parsed/{file}", "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    out.write(content)
-                    if i < len(parsed) - 1:
-                        out.write(",")
-            out.write("}")
-        with open("./output/verbs.min.json", "r", encoding="utf-8") as min_file:
-            min_data = json.load(min_file)
-        with open("./output/verbs.json", "w", encoding="utf-8") as out:
-            json.dump(min_data, out, ensure_ascii=False, indent=4)
+
+    log.info("All verbs ({verbs_counter}) processed.")
+    
+    # == MERGE ALL PARTIAL JSON FILES ==
+    with open("./output/verbs.min.json", "w", encoding="utf-8") as out:
+        parsed = sorted(os.listdir("./output/parsed"))
+        log.info(f"Merging all parsed ({len(parsed)}) entries...")
+        out.write("{")
+        for i, file in enumerate(parsed):
+            with open(f"./output/parsed/{file}", "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                out.write(content)
+                if i < len(parsed) - 1:
+                    out.write(",")
+        out.write("}")
+    with open("./output/verbs.min.json", "r", encoding="utf-8") as min_file:
+        log.info("Writing to ./output/verbs.min.json")
+        min_data = json.load(min_file)
+    with open("./output/verbs.json", "w", encoding="utf-8") as out:
+        log.info("Writing to ./output/verbs.json")
+        json.dump(min_data, out, ensure_ascii=False, indent=4)
+
+    # == GENERATE SQLITE3 DATABASE IF REQUIRED ==
+    if gl.EXTENSION_GEN_SQLITE3:
+        log.info("Generating SQLite3 database...")
+        ext_db.generate_sqlite_db(min_data)
 
 if __name__ == "__main__":
     main()
