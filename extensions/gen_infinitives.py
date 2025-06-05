@@ -41,7 +41,8 @@ def gen_infs_main():
             log.info(f"All entries for letter `{letter}` have been processed.")
             continue
         verb_count = 0
-        while counters[letter] != -1:
+        consecutive_404_errors = 0
+        while counters[letter] != -1 and counters[letter] < 10000 and consecutive_404_errors < 10:
             counters[letter] += 1
             if not prev_entry_id:
                 headers["Cookie"] += f"; lastEntry={prev_entry_id}"
@@ -57,7 +58,7 @@ def gen_infs_main():
                 elif response.status_code == 404:
                     # No more entries for this letter
                     log.info(f"Finished querying infinitives for letter `{letter}`, found {verb_count} verbs.")
-                    counters[letter] = -1
+                    consecutive_404_errors += 1
             except Exception as e:
                 log.warning(f"An error occurred while getting entry for ID {prev_entry_id}: {e}.")
                 continue
@@ -94,4 +95,8 @@ def gen_infs_main():
 
             if verb_count % 10 == 0:
                 log.info(f"Found {verb_count} verbs for letter `{letter}` so far.")
+
+        counters[letter] = -1  # Mark this letter as fully processed
+        with open("./output/gen_infs/counters.json", "w", encoding="utf-8") as f:
+            json.dump(counters, f, ensure_ascii=False, indent=4)
                 
