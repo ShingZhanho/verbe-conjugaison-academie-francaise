@@ -5,6 +5,7 @@ Created by: Jacob Shing
 
 import core
 import extensions.db as ext_db
+import extensions.gen_infinitives as ext_gen_infs
 import global_vars as gl
 import json
 import log
@@ -48,6 +49,9 @@ def parse_cmd_args(args: list):
             log.verbose("Verbose mode enabled.", gl.CONFIG_VERBOSE)
         elif args[counter] == "-E:GEN-SQLITE3":
             gl.EXTENSION_GEN_SQLITE3 = True
+        elif args[counter] == "-E:GEN-INFINITIVES":
+            gl.EXTENSION_GEN_INFINITIVES = True
+            log.warning("Using extension GEN-INFINITIVES. This will only generate the infinitives.txt file.")
         else:
             log.warning(f"Unknown command line option {args[counter]}. Ignored.")
         counter += 1
@@ -74,7 +78,12 @@ def main():
         "./output/cache",
         "./output/parsed",
     ]
+    out_dirs.append("./output/gen_infs") if gl.EXTENSION_GEN_INFINITIVES else None
     [os.makedirs(dir, exist_ok=True) for dir in out_dirs if not os.path.exists(dir)]
+
+    if gl.EXTENSION_GEN_INFINITIVES:
+        ext_gen_infs.gen_infs_main()
+        return
 
     total_verbs = 0
     verbs_counter = 0

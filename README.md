@@ -13,7 +13,7 @@ are used to generate the conjugation tables.
 > Should you find a verb that is not present in the list, you may add it to the file `infinitives.txt` (preferably remove
 > all other verbs) then run the script `crawler.py` to generate the conjugation data.
 
-## Format of the Release Artifacts
+## Format of the Release Artefacts
 
 ### Files `verbs.json` and `verbs.min.json`
 
@@ -81,7 +81,7 @@ and plural are conjugated, but the keys of other persons are still present, with
 > The two forms accepted by the AF dictionary are both included in the same key,
 > separated by a comma (`,`).
 
-### `verbs.db`
+### File `verbs.db`
 
 > [!note]
 > Unlike the JSON files, table names and column names in the database are NON-ACCENTED.
@@ -144,16 +144,15 @@ The script attempts to obtain it automatically, but you may overwrite it manuall
 
 #### Configuration Options
 - `-C:IGNORE-CACHE` - Ignore the cached HTML files and always fetch the latest data from the AF website. False by default.
-
 - `-C:MAX-RETRY <n>` - Set the maximum number of retries if HTTP requests fail. Default is 3.
-
 - `-C:REQUESTS-DELAY <n>` - The delay between HTTP requests in ms. Default is 500 (half a second).
 Set this to a higher value if the server blocks your IP for too many requests.
-
 - `-C:VERBOSE` - Enable verbose output to see more details about the script's execution. False by default.
 
 #### Extension Options
 - `-E:GEN-SQLITE3` - Generate an SQLite3 database file of the conjugation data (`verbs.db`). False by default.
+- `-E:GEN-INFINITIVES` - Generate a file of all verb infinitives (`./output/infinitives.txt`) from the AF dictionary. False by default.
+(_Using this extension will only generate the infinitives list, not the conjugation data._)
 
 > [!note]
 > Running the script against the full list of verbs can take up to 8 hours.

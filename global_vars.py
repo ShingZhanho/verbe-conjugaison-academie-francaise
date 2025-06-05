@@ -25,3 +25,4 @@ CONFIG_REQUESTS_DELAY = 500 # in ms; set to higher if blocked by the server
 CONFIG_VERBOSE = False
 
 EXTENSION_GEN_SQLITE3 = False
+EXTENSION_GEN_INFINITIVES = False
