@@ -3,15 +3,8 @@
 This repository hosts a list of French verbs with their conjugations, obtained from the Académie française's (AF) dictionary,
 and also the Python scripts used to generate the conjugation tables.
 
-The list of verb infinitives (`infinitives.txt`) is based on the file `verbs.json` from the repository
-[Einenlum/french-verbs-list](https://github.com/Einenlum/french-verbs-list).
-The list of verbs are checked against the AF dictionary and only those that are present in the 9th edition of the dictionary
-are used to generate the conjugation tables.
-
-> [!note]
-> It is unknown whether the verbs provided by the list are complete as the file was last updated 7 years ago (as of Jun 2025).
-> Should you find a verb that is not present in the list, you may add it to the file `infinitives.txt` (preferably remove
-> all other verbs) then run the script `crawler.py` to generate the conjugation data.
+The list of verb infinitives (`infinitives.txt`) is obtained from the AF dictionary, using the script options `-E:GEN-INFINITIVES`.
+The list includes all 6,250 verbs that are available in the 9th edition of the dictionary.
 
 ## Format of the Release Artefacts
 
