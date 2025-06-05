@@ -15,88 +15,46 @@ def gen_infs_main():
     """
     Generates the infinitives.txt file from the AF dictionary.
     """
-    # Try entry ID in format A9<leter><<number> e.g. A9B1234 means the word starts with B and has ID 1234.
-    counters = {chr(letter): 0 for letter in range(ord('A'), ord('Z') + 1)}
-    # Try to load cached counters
-    if os.path.exists("./output/gen_infs/counters.json"):
-        with open("./output/gen_infs/counters.json", "r", encoding="utf-8") as f:
-            counters = json.load(f)
-
     headers = {
-        "Accept": gl.HEADER_ACCEPT,
+        "Accept": gl.EXT_GEN_INFS_HEADER_ACCEPT,
         "Accept-Encoding": gl.HEADER_ACCEPT_ENCODING,
         "Accept-Language": gl.HEADER_ACCEPT_LANGUAGE,
-        "User-Agent": gl.USER_AGENT,
         "Content-Type": gl.HEADER_CONTENT_TYPE,
-        "Cookie": f"JSESSIONID={gl.COOKIE_JSESSION_ID}; {gl.HEADER_MISC_COOKIES}",
-        "Sec-Fetch-Site": gl.HEADER_SEC_FETCH_SITE,
-        "Sec-Fetch-Mode": gl.HEADER_SEC_FETCH_MODE,
-        "Sec-Fetch-Dest": gl.HEADER_SEC_FETCH_DEST,
+        "Cookie": f"{gl.HEADER_MISC_COOKIES}; JSESSIONID={gl.COOKIE_JSESSION_ID}",
+        "User-Agent": gl.USER_AGENT,
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "document"
     }
-
-    prev_entry_id = None
-    for letter in counters.keys():
-        log.info(f"Querying infinitives beginning with `{letter}`...")
-        if counters[letter] == -1:  # -1 means all entries for this letter have been processed
-            log.info(f"All entries for letter `{letter}` have been processed.")
-            continue
-        verb_count = 0
-        consecutive_404_errors = 0
-        while counters[letter] != -1 and counters[letter] < 10000 and consecutive_404_errors < 10:
-            counters[letter] += 1
-            if not prev_entry_id:
-                headers["Cookie"] += f"; lastEntry={prev_entry_id}"
-                headers["Referer"] = f"{gl.URL_ROOT}article/{letter}"
-            prev_entry_id = f"A9{letter}{counters[letter]:04d}"
-
-            try:
-                log.verbose(f"GET {gl.URL_ROOT}article/{prev_entry_id}", gl.CONFIG_VERBOSE)
-                response = requests.get(f"{gl.URL_ROOT}article/{prev_entry_id}", headers=headers)
-                if response.status_code != 200 and response.status_code != 404:
-                    log.warning(f"Failed to get entry for ID {prev_entry_id}. Status code: {response.status_code}.")
-                    continue
-                elif response.status_code == 404:
-                    # No more entries for this letter
-                    log.info(f"Finished querying infinitives for letter `{letter}`, found {verb_count} verbs.")
-                    consecutive_404_errors += 1
-            except Exception as e:
-                log.warning(f"An error occurred while getting entry for ID {prev_entry_id}: {e}.")
-                continue
-
-            if counters[letter] % 100 == 0:
-                # Cache counters every 100 entries
-                with open("./output/gen_infs/counters.json", "w", encoding="utf-8") as f:
-                    json.dump(counters, f, ensure_ascii=False, indent=4)
-                log.verbose(f"Cached counters after processing {counters[letter]} entries for letter `{letter}`.", gl.CONFIG_VERBOSE)
+    
+    for alphabet in range(ord('a'), ord('z') + 1):
+        alphabet_char = chr(alphabet)
+        data = gl.EXT_GEN_INFS_HEADER_DATA.replace("{% ALPHABET %}", alphabet_char)
+        
+        try:
+            log.info(f"GET {gl.EXT_GEN_INFS_URL} for alphabet '{alphabet_char.upper()}'")
+            response = requests.post(gl.EXT_GEN_INFS_URL, headers=headers, data=data.replace(" ", "%20"))
+            response.raise_for_status()  # Raise an error for bad responses
             
-            # Parse the response
-            soup = BeautifulSoup(response.text, "lxml")
-            word_content = soup.find("div", id=prev_entry_id)
-            if word_content is None:
-                log.warning(f"Failed to find content for entry ID {prev_entry_id}.")
+            soup = BeautifulSoup(response.text, 'html.parser')
+            list_items = soup.select('div#colGaucheResultat ul.listColGauche li')
+            if not list_items:
+                log.warning(f"No infinitives found for alphabet '{alphabet_char.upper()}'")
                 continue
-            word_category_span = word_content.find("span", class_="s_cat")
-            if word_category_span is None:
-                continue
-            word_category = word_category_span.text.strip().lower()
-            if "verbe" not in word_category or "adverbe" in word_category:
-                continue  # Skip non-verb entries
-            verb_infinitive = soup.find("div", class_="s_Entree_haut").find("h1").text.strip().lower()
-            verb_infinitive = verb_infinitive.replace(" (s’)", "").replace(" (s')", "")
+            log.info(f"Found {len(list_items)} infinitives for alphabet '{alphabet_char.upper()}'")
+
+            inf_list = []
+            for item in list_items:
+                raw_entry_data = item.text
+                entry_data = raw_entry_data.split(',')[0].strip().replace(" (s’)", "").replace(" (se)", "").replace(" (s')", "")
+                inf_list.append(entry_data)
+            inf_list = sorted(set(inf_list))  # Remove duplicates and sort
+            log.info(f"Found {len(inf_list)} unique infinitives for alphabet '{alphabet_char.upper()}'")
+
             with open("./output/gen_infs/infinitives.txt", "a", encoding="utf-8") as f:
-                f.write(f"{verb_infinitive}\n")
-            log.verbose(f"Found verb infinitive: {verb_infinitive} (ID: {prev_entry_id})", gl.CONFIG_VERBOSE)
-            verb_count += 1
-
-            # Cache counters when any verb is found
-            with open("./output/gen_infs/counters.json", "w", encoding="utf-8") as f:
-                json.dump(counters, f, ensure_ascii=False, indent=4)
-            log.verbose(f"Cached counters after processing {counters[letter]} entries for letter `{letter}`.", gl.CONFIG_VERBOSE)
-
-            if verb_count % 10 == 0:
-                log.info(f"Found {verb_count} verbs for letter `{letter}` so far.")
-
-        counters[letter] = -1  # Mark this letter as fully processed
-        with open("./output/gen_infs/counters.json", "w", encoding="utf-8") as f:
-            json.dump(counters, f, ensure_ascii=False, indent=4)
+                for inf in inf_list:
+                    f.write(f"{inf}\n")
+        except Exception as e:
+            log.error(f"An error occurred while generating infinitives for alphabet '{alphabet_char.upper()}': {e}")
+            continue
                 

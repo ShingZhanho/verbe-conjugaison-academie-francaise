@@ -26,3 +26,7 @@ CONFIG_VERBOSE = False
 
 EXTENSION_GEN_SQLITE3 = False
 EXTENSION_GEN_INFINITIVES = False
+
+EXT_GEN_INFS_URL = f"{URL_ROOT}advsearch/"
+EXT_GEN_INFS_HEADER_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+EXT_GEN_INFS_HEADER_DATA = "txt_fullsearch=&chk_allform=1&lst_section=&checked_domain=&txt_entry={% ALPHABET %}.*&chk_noaccent=1&checked_grammcat=27%2C28%2C29%2C30%2C31%2C32%2C33%2C&chk_grpcat=on&chk_gramcat=v.&chk_gramcat=v.+tr.&chk_gramcat=v.+intr.&chk_gramcat=v.+pron.&chk_gramcat=v.+r%C3%A9cipr.&chk_gramcat=v.+impers.&checked_lang=&lst_datation=&lst_editions=9&btRechercher="
