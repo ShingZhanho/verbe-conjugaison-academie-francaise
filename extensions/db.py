@@ -71,32 +71,32 @@ def generate_sqlite_db(loaded_json):
                 "con_passe": None,
                 "imp_present": None,
                 "imp_passe": None,
-                "h_aspire": verb_dict.get("h_aspiré", False)
+                "h_aspire": verb_dict.get("h_aspire", False)
             }
             # Indicative mood
             if (ind_data := voice_moods.get("indicatif", None)) is not None:
-                conjugation_data["ind_present"] = ind_data.get("présent", None)
-                conjugation_data["ind_passe_simple"] = ind_data.get("passé_simple", None)
+                conjugation_data["ind_present"] = ind_data.get("present", None)
+                conjugation_data["ind_passe_simple"] = ind_data.get("passe_simple", None)
                 conjugation_data["ind_futur_simple"] = ind_data.get("futur_simple", None)
-                conjugation_data["ind_passe_compose"] = ind_data.get("passé_composé", None)
+                conjugation_data["ind_passe_compose"] = ind_data.get("passe_compose", None)
                 conjugation_data["ind_plus_que_parfait"] = ind_data.get("plus_que_parfait", None)
-                conjugation_data["ind_passe_anterieur"] = ind_data.get("passé_antérieur", None)
-                conjugation_data["ind_futur_anterieur"] = ind_data.get("futur_antérieur", None)
+                conjugation_data["ind_passe_anterieur"] = ind_data.get("passe_anterieur", None)
+                conjugation_data["ind_futur_anterieur"] = ind_data.get("futur_anterieur", None)
                 conjugation_data["ind_imparfait"] = ind_data.get("imparfait", None)
             # Subjunctive mood
             if (sub_data := voice_moods.get("subjonctif", None)) is not None:
-                conjugation_data["sub_present"] = sub_data.get("présent", None)
-                conjugation_data["sub_passe"] = sub_data.get("passé", None)
+                conjugation_data["sub_present"] = sub_data.get("present", None)
+                conjugation_data["sub_passe"] = sub_data.get("passe", None)
                 conjugation_data["sub_imparfait"] = sub_data.get("imparfait", None)
                 conjugation_data["sub_plus_que_parfait"] = sub_data.get("plus_que_parfait", None)
             # Conditional mood
             if (con_data := voice_moods.get("conditionnel", None)) is not None:
-                conjugation_data["con_present"] = con_data.get("présent", None)
-                conjugation_data["con_passe"] = con_data.get("passé", None)
+                conjugation_data["con_present"] = con_data.get("present", None)
+                conjugation_data["con_passe"] = con_data.get("passe", None)
             # Imperative mood
             if (imp_data := voice_moods.get("impératif", None)) is not None:
-                conjugation_data["imp_present"] = imp_data.get("présent", None)
-                conjugation_data["imp_passe"] = imp_data.get("passé", None)
+                conjugation_data["imp_present"] = imp_data.get("present", None)
+                conjugation_data["imp_passe"] = imp_data.get("passe", None)
             
             for key in conjugation_data:
                 if key == "verb":

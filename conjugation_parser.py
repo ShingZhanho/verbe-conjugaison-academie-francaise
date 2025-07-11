@@ -42,7 +42,7 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | Non
         result[verb]["voix_active_avoir"] = __parse_conjugation_div(voix_active_avoir, 1)
     if voix_active_etre is not None:
         log.info(f"Parsing active voice with auxiliary 'être'...")
-        result[verb]["voix_active_être"] = __parse_conjugation_div(voix_active_etre, 1)
+        result[verb]["voix_active_etre"] = __parse_conjugation_div(voix_active_etre, 1)
     if voix_pron is not None:
         log.info(f"Parsing reflexive voice...")
         result[verb]["voix_prono"] = __parse_conjugation_div(voix_pron, 2)
@@ -50,9 +50,9 @@ def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | Non
     # Check for "h aspiré"
     log.info(f"Checking for 'h aspiré'...")
     if verb[0] != 'h':
-        result[verb]["h_aspiré"] = False
+        result[verb]["h_aspire"] = False
     else:
-        result[verb]["h_aspiré"] = "H aspiré" in root_tag.text
+        result[verb]["h_aspire"] = "H aspiré" in root_tag.text
         
     return result if len(result[verb]) > 0 else None
 
@@ -116,7 +116,7 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
         log.warning(f"The verb does not seem to contain a conditional mood. This might be an error.")
     if imperatif_div is not None:
         log.info(f"Parsing imperative mood...")
-        result["impératif"] = __parse_mood_div(imperatif_div, True)
+        result["imperatif"] = __parse_mood_div(imperatif_div, True)
     else:
         log.warning(f"The verb does not seem to contain an imperative mood. This might be an error.")
 
@@ -136,15 +136,15 @@ def __parse_mood_div(div_tag, is_imperatif: bool = False) -> dict:
     # Find all tenses tables within the mood
     tense_divs = div_tag.find_all("div", class_="tense")
     tense_name_key_map = {
-        "présent": "présent",
-        "passé": "passé",
+        "présent": "present",
+        "passé": "passe",
         "imparfait": "imparfait",
-        "passé composé": "passé_composé",
+        "passé composé": "passe_compose",
         "plus-que-parfait": "plus_que_parfait",
         "futur simple": "futur_simple",
-        "futur antérieur": "futur_antérieur",
-        "passé simple": "passé_simple",
-        "passé antérieur": "passé_antérieur",
+        "futur antérieur": "futur_anterieur",
+        "passé simple": "passe_simple",
+        "passé antérieur": "passe_antérieur",
     }
     for tense_div in tense_divs:
         tense_name = tense_div.find("h4", class_="relation").text.strip().lower()

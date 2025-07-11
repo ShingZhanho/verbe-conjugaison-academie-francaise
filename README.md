@@ -16,40 +16,40 @@ The release artifacts include two JSON files:
 
 > [!note]
 > All non-ASCII characters in the JSON file are NOT escaped.
-> You should use the appropriate accented characters when accessing the data file.
+> All JSON keys have their accents removed, and are in lowercase.
 
 Each verb infinitive is a key in the JSON file.
 Under each infinitive, at most three voices are provided:
 1. `voix_active_avoir` - active voice with auxiliary verb "avoir"
-2. `voix_active_être` - active voice with auxiliary verb "être"
+2. `voix_active_etre` - active voice with auxiliary verb "être"
 3. `voix_prono` - verb conjugated in reflexive form
 
 Passive voice is not covered.
 
-There is another extra key `h_aspiré` at the same level as the voices, which indicates whether the verb
+There is another extra key `h_aspire` at the same level as the voices, which indicates whether the verb
 begins with an "h aspiré". This value is boolean.
 
 Under each voice, at most four moods and all of their tenses are included:
 1. `indicatif` - indicative mood
-    - `présent`
+    - `present`
     - `imparfait`
-    - `passé_simple`
+    - `passe_simple`
     - `futur_simple`
-    - `passé_composé`
+    - `passe_compose`
     - `plus_que_parfait`
-    - `passé_antérieur`
-    - `futur_antérieur`
+    - `passe_anterieur`
+    - `futur_anterieur`
 2. `subjonctif` - subjunctive mood
-    - `présent`
+    - `present`
     - `imparfait`
-    - `passé`
+    - `passe`
     - `plus_que_parfait`
 3. `conditionnel` - conditional mood
-    - `présent`
+    - `present`
     - `passé`
-4. `impératif` - imperative mood
-    - `présent`
-    - `passé`
+4. `imperatif` - imperative mood
+    - `present`
+    - `passe`
 
 Note that participles are not included in the release file. You may modify the script `conjugation_parser.py` to parse the
 HTML files and extract the participles if you need them.
@@ -75,10 +75,6 @@ and plural are conjugated, but the keys of other persons are still present, with
 > separated by a comma (`,`).
 
 ### File `verbs.db`
-
-> [!note]
-> Unlike the JSON files, table names and column names in the database are NON-ACCENTED.
-> You should use the non-accented names when accessing the database.
 
 An SQLite3 database file containing the conjugation data of all verbs in the list.
 The database has three tables:
