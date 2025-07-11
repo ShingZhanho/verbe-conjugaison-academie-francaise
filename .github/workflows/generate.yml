@@ -1,0 +1,56 @@
+name: Generate Conjugation Data
+on:
+  workflow_dispatch:
+    inputs:
+      verbose-logging:
+        description: "Enable verbose logging"
+        required: false
+        type: boolean
+        default: false
+
+      generate-sqlite3:
+        description: "Generate SQLite3 database"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  generate_data:
+    runs-on: ubuntu-22.04
+    env:
+      VERBOSE_LOGGING: ${{ inputs.verbose-logging}}
+      GENERATE_SQLITE3: ${{ inputs.generate-sqlite3 }}
+      ARGS: ""
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Set up command line arguments
+        run: |
+          if [[ "${VERBOSE_LOGGING}" == "true" ]]; then
+            ARGS="${ARGS} -C:VERBOSE"
+          fi
+          if [[ "${GENERATE_SQLITE3}" == "true" ]]; then
+            ARGS="${ARGS} -E:GEN-SQLITE3"
+          fi
+          echo "ARGS=${ARGS}" >> $GITHUB_ENV
+      - name: Run conjugation parser
+        run: python crawler.py ${ARGS}
+      - name: Upload generated JSON files
+        uses: actions/upload-artifact@v4
+        with:
+          name: conjugation-data-json
+          path: |
+            ./output/verbs.json
+            ./output/verbs.min.json
+      - name: Upload generated SQLite3 database
+        if: ${{ inputs.generate-sqlite3 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: conjugation-data-sqlite3
+          path: ./output/verbs.db
