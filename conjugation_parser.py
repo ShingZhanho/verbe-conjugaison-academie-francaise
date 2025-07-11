@@ -100,25 +100,25 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
     imperatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_imp")
 
     if indicatif_div is not None:
-        log.info(f"Parsing indicative mood...")
+        log.info(f"    Parsing indicative mood...")
         result["indicatif"] = __parse_mood_div(indicatif_div)
     else:
-        log.warning(f"The verb does not seem to contain an indicative mood. This might be an error.")
+        log.warning(f"    The verb does not seem to contain an indicative mood.")
     if subjonctif_div is not None:
-        log.info(f"Parsing subjunctive mood...")
+        log.info(f"    Parsing subjunctive mood...")
         result["subjonctif"] = __parse_mood_div(subjonctif_div)
     else:
-        log.warning(f"The verb does not seem to contain a subjunctive mood. This might be an error.")
+        log.warning(f"    The verb does not seem to contain a subjunctive mood.")
     if conditionnel_div is not None:
-        log.info(f"Parsing conditional mood...")
+        log.info(f"    Parsing conditional mood...")
         result["conditionnel"] = __parse_mood_div(conditionnel_div)
     else:
-        log.warning(f"The verb does not seem to contain a conditional mood. This might be an error.")
+        log.warning(f"    The verb does not seem to contain a conditional mood.")
     if imperatif_div is not None:
-        log.info(f"Parsing imperative mood...")
+        log.info(f"    Parsing imperative mood...")
         result["imperatif"] = __parse_mood_div(imperatif_div, True)
     else:
-        log.warning(f"The verb does not seem to contain an imperative mood. This might be an error.")
+        log.warning(f"    The verb does not seem to contain an imperative mood.")
 
     return result
 
@@ -150,7 +150,7 @@ def __parse_mood_div(div_tag, is_imperatif: bool = False) -> dict:
         tense_name = tense_div.find("h4", class_="relation").text.strip().lower()
         tense_name_key = tense_name_key_map.get(tense_name, None)
         if tense_name_key is None:
-            log.warning(f"Unknown tense '{tense_name}' found in mood div. Skipping.")
+            log.warning(f"    Unknown tense '{tense_name}' found in mood div. Skipping.")
             continue
         tense_table_rows = tense_div.find_all("tr", class_="conj_line")
         if is_imperatif:
@@ -190,11 +190,11 @@ def __parse_tense_table(table_rows_tags) -> dict:
 
     for row in table_rows_tags:
         if (conj_pp := row.find("span", class_="conj_pp")) is None:
-            log.warning(f"Row does not contain a pronoun. Skipping.")
+            log.warning(f"    Row does not contain a pronoun. Skipping.")
             continue
         pronoun_key = __map_pronoun_to_key(conj_pp.text)
         if pronoun_key is None:
-            log.warning(f"Unknown pronoun found in tense table. Skipping.")
+            log.warning(f"    Unknown pronoun found in tense table. Skipping.")
             continue
         reflexive_pronoun_tag = row.find("td", class_="conj_refl-pron")
         reflexive_pronoun = reflexive_pronoun_tag.text.strip() if reflexive_pronoun_tag else ""
