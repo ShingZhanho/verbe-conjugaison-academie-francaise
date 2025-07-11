@@ -94,7 +94,7 @@ def generate_sqlite_db(loaded_json):
                 conjugation_data["con_present"] = con_data.get("present", None)
                 conjugation_data["con_passe"] = con_data.get("passe", None)
             # Imperative mood
-            if (imp_data := voice_moods.get("impératif", None)) is not None:
+            if (imp_data := voice_moods.get("imperatif", None)) is not None:
                 conjugation_data["imp_present"] = imp_data.get("present", None)
                 conjugation_data["imp_passe"] = imp_data.get("passe", None)
             
