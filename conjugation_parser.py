@@ -180,7 +180,7 @@ def __parse_tense_table(table_rows_tags) -> dict:
             return "tu"
         elif "ils" in pronoun or "elles" in pronoun:  # Keep only masculine form
             return "ils"
-        elif "il" in pronoun or "elle" in pronoun:    # Keep only masculine form
+        elif "il" in pronoun or "elle" in pronoun or "on" in pronoun:    # Keep only masculine form
             return "il"
         elif "nous" in pronoun:
             return "nous"
