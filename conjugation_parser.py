@@ -144,7 +144,7 @@ def __parse_mood_div(div_tag, is_imperatif: bool = False) -> dict:
         "futur simple": "futur_simple",
         "futur antérieur": "futur_anterieur",
         "passé simple": "passe_simple",
-        "passé antérieur": "passe_antérieur",
+        "passé antérieur": "passe_anterieur",
     }
     for tense_div in tense_divs:
         tense_name = tense_div.find("h4", class_="relation").text.strip().lower()
