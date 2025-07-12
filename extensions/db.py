@@ -44,7 +44,7 @@ def generate_sqlite_db(loaded_json):
     # == LOAD DATA INTO TABLES ==
     voice_name_table_map = {
         "voix_active_avoir": "ACTIVE_AVOIR",
-        "voix_active_être": "ACTIVE_ETRE",
+        "voix_active_etre": "ACTIVE_ETRE",
         "voix_prono": "PRONOMINAL"
     }
     for verb in loaded_json:
