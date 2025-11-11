@@ -1,6 +1,17 @@
 """
 An extension for generating an SQLite database for verb conjugations.
+
+This module creates a normalized relational database from the JSON conjugation data.
+The schema supports efficient querying by person, tense, mood, voice, and includes
+full support for participles and 1990 spelling reform metadata.
+
+Schema:
+    - verbs: Core verb metadata (infinitive, h_aspire, reform info)
+    - conjugations: All person conjugations (normalized, one row per person/tense)
+    - participles: Participle forms (present, past with all genders/numbers)
+
 Created on: 2025-06-04 10:56:40
+Updated on: 2025-11-11
 Created by: Jacob Shing
 """
 
@@ -11,146 +22,147 @@ import sqlite3
 import constants as const
 
 def generate_sqlite_db(loaded_json):
+    """
+    Generate a normalized SQLite database from the JSON conjugation data.
+    
+    Args:
+        loaded_json: Dictionary of verb data loaded from verbs.json
+    """
     db_path = f"{const.DIR_OUTPUT}/verbs.db"
     if os.path.exists(db_path):
         os.remove(db_path)
+        log.info(f"Removed existing database: {db_path}")
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # == CREATE TABLES ==
-    # Each voice has its own table (ACTIVE_AVOIR, ACTIVE_ETRE, PRONOMINAL)
-    # Each table has one row per verb
-    # Columns: verb (PRIMARY KEY), ind_present, ind_passe_compose, ..., sub_present, etc.
-    column_defs = """verb VARCHAR(255) PRIMARY KEY NOT NULL,
-    ind_present VARCHAR(255),
-    ind_passe_simple VARCHAR(255),
-    ind_futur_simple VARCHAR(255),
-    ind_passe_compose VARCHAR(255),
-    ind_plus_que_parfait VARCHAR(255),
-    ind_passe_anterieur VARCHAR(255),
-    ind_futur_anterieur VARCHAR(255),
-    ind_imparfait VARCHAR(255),
-    sub_present VARCHAR(255),
-    sub_passe VARCHAR(255),
-    sub_imparfait VARCHAR(255),
-    sub_plus_que_parfait VARCHAR(255),
-    con_present VARCHAR(255),
-    con_passe VARCHAR(255),
-    imp_present VARCHAR(255),
-    imp_passe VARCHAR(255),
-    h_aspire BOOLEAN DEFAULT 0"""
-    for voice in ["ACTIVE_AVOIR", "ACTIVE_ETRE", "PRONOMINAL"]:
-        cursor.execute(f"CREATE TABLE {voice} ({column_defs})")
+    # == CREATE NORMALIZED SCHEMA ==
+    log.info("Creating database schema...")
+    
+    # Core verb metadata table
+    cursor.execute("""
+        CREATE TABLE verbs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            infinitive TEXT UNIQUE NOT NULL,
+            h_aspire BOOLEAN DEFAULT 0,
+            rectification_1990 BOOLEAN DEFAULT 0,
+            rectification_1990_variante TEXT
+        )
+    """)
+    
+    # Conjugations table (normalized by person)
+    cursor.execute("""
+        CREATE TABLE conjugations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            verb_id INTEGER NOT NULL,
+            voice TEXT NOT NULL,
+            mood TEXT NOT NULL,
+            tense TEXT NOT NULL,
+            person TEXT NOT NULL,
+            conjugation TEXT NOT NULL,
+            FOREIGN KEY (verb_id) REFERENCES verbs(id) ON DELETE CASCADE,
+            UNIQUE(verb_id, voice, mood, tense, person)
+        )
+    """)
+    
+    # Participles table
+    cursor.execute("""
+        CREATE TABLE participles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            verb_id INTEGER NOT NULL,
+            voice TEXT NOT NULL,
+            form TEXT NOT NULL,
+            participle TEXT NOT NULL,
+            FOREIGN KEY (verb_id) REFERENCES verbs(id) ON DELETE CASCADE,
+            UNIQUE(verb_id, voice, form)
+        )
+    """)
+    
+    # Create indexes for common queries
+    log.info("Creating indexes...")
+    cursor.execute("CREATE INDEX idx_verbs_infinitive ON verbs(infinitive)")
+    cursor.execute("CREATE INDEX idx_verbs_variants ON verbs(rectification_1990_variante)")
+    cursor.execute("CREATE INDEX idx_conjugations_lookup ON conjugations(verb_id, voice, mood, tense, person)")
+    cursor.execute("CREATE INDEX idx_conjugations_search ON conjugations(conjugation)")
+    cursor.execute("CREATE INDEX idx_participles_lookup ON participles(verb_id, voice, form)")
 
     # == LOAD DATA INTO TABLES ==
-    voice_name_table_map = const.VOICE_MAPPING
-    for verb in loaded_json:
-        verb_dict = loaded_json[verb]
-        for voice in voice_name_table_map:
-            voice_moods = verb_dict.get(voice, {})
-            if len(voice_moods) == 0:
+    log.info(f"Loading data for {len(loaded_json)} verbs...")
+    verb_count = 0
+    conjugation_count = 0
+    participle_count = 0
+    
+    for infinitive, verb_data in loaded_json.items():
+        # Insert verb metadata
+        cursor.execute("""
+            INSERT INTO verbs (infinitive, h_aspire, rectification_1990, rectification_1990_variante)
+            VALUES (?, ?, ?, ?)
+        """, (
+            infinitive,
+            verb_data.get('h_aspire', False),
+            verb_data.get('rectification_1990', False),
+            verb_data.get('rectification_1990_variante')
+        ))
+        verb_id = cursor.lastrowid
+        verb_count += 1
+        
+        # Process each voice
+        for voice_key in ['voix_active_avoir', 'voix_active_etre', 'voix_prono']:
+            voice_data = verb_data.get(voice_key)
+            if not voice_data:
                 continue
-            conjugation_data = {
-                "verb": verb,
-                "ind_present": None,
-                "ind_passe_simple": None,
-                "ind_futur_simple": None,
-                "ind_passe_compose": None,
-                "ind_plus_que_parfait": None,
-                "ind_passe_anterieur": None,
-                "ind_futur_anterieur": None,
-                "ind_imparfait": None,
-                "sub_present": None,
-                "sub_passe": None,
-                "sub_imparfait": None,
-                "sub_plus_que_parfait": None,
-                "con_present": None,
-                "con_passe": None,
-                "imp_present": None,
-                "imp_passe": None,
-                "h_aspire": verb_dict.get("h_aspire", False)
-            }
-            # Indicative mood
-            if (ind_data := voice_moods.get("indicatif", None)) is not None:
-                conjugation_data["ind_present"] = ind_data.get("present", None)
-                conjugation_data["ind_passe_simple"] = ind_data.get("passe_simple", None)
-                conjugation_data["ind_futur_simple"] = ind_data.get("futur_simple", None)
-                conjugation_data["ind_passe_compose"] = ind_data.get("passe_compose", None)
-                conjugation_data["ind_plus_que_parfait"] = ind_data.get("plus_que_parfait", None)
-                conjugation_data["ind_passe_anterieur"] = ind_data.get("passe_anterieur", None)
-                conjugation_data["ind_futur_anterieur"] = ind_data.get("futur_anterieur", None)
-                conjugation_data["ind_imparfait"] = ind_data.get("imparfait", None)
-            # Subjunctive mood
-            if (sub_data := voice_moods.get("subjonctif", None)) is not None:
-                conjugation_data["sub_present"] = sub_data.get("present", None)
-                conjugation_data["sub_passe"] = sub_data.get("passe", None)
-                conjugation_data["sub_imparfait"] = sub_data.get("imparfait", None)
-                conjugation_data["sub_plus_que_parfait"] = sub_data.get("plus_que_parfait", None)
-            # Conditional mood
-            if (con_data := voice_moods.get("conditionnel", None)) is not None:
-                conjugation_data["con_present"] = con_data.get("present", None)
-                conjugation_data["con_passe"] = con_data.get("passe", None)
-            # Imperative mood
-            if (imp_data := voice_moods.get("imperatif", None)) is not None:
-                conjugation_data["imp_present"] = imp_data.get("present", None)
-                conjugation_data["imp_passe"] = imp_data.get("passe", None)
             
-            for key in conjugation_data:
-                if key == "verb":
-                    # Escape single quotes and surround with single quotes
-                    conjugation_data[key] = f"'{conjugation_data[key].replace("'", "''")}'"
+            # Process participles
+            participe_data = voice_data.get('participe')
+            if participe_data:
+                # Present participle
+                if participe_data.get('present'):
+                    cursor.execute("""
+                        INSERT INTO participles (verb_id, voice, form, participle)
+                        VALUES (?, ?, ?, ?)
+                    """, (verb_id, voice_key, 'present', participe_data['present']))
+                    participle_count += 1
+                
+                # Past participles
+                passe_data = participe_data.get('passe', {})
+                for form_key, participle_value in passe_data.items():
+                    cursor.execute("""
+                        INSERT INTO participles (verb_id, voice, form, participle)
+                        VALUES (?, ?, ?, ?)
+                    """, (verb_id, voice_key, f'passe_{form_key}', participle_value))
+                    participle_count += 1
+            
+            # Process moods and tenses
+            for mood in ['indicatif', 'subjonctif', 'conditionnel', 'imperatif']:
+                mood_data = voice_data.get(mood)
+                if not mood_data:
                     continue
-                if key == "h_aspire":
-                    continue  # h_aspire is a boolean, handled separately
-                if conjugation_data[key] is None:
-                    conjugation_data[key] = "NULL"
-                else:
-                    # Flatten the dictionary for each pronoun
-                    pronoun_dict = conjugation_data[key]
-                    if key[:3] == "imp":
-                        # imperative mood tenses have only three pronouns
-                        pronouns = ["tu", "nous", "vous"]
-                    else:
-                        # all other tenses have six pronouns
-                        pronouns = ["je", "tu", "il", "nous", "vous", "ils"]
-                    conjs = []
-                    for pronoun in pronouns:
-                        if pronoun in pronoun_dict:
-                            conj = pronoun_dict.get(pronoun, "")
-                            conjs.append("" if conj is None else conj)
-                        else:
-                            conjs.append("")
-                    cell_str = ";".join(conjs)
-                    # Escape single quotes and surround with single quotes
-                    conjugation_data[key] = f"'{cell_str.replace("'", "''")}'"
+                
+                for tense, tense_data in mood_data.items():
+                    if not isinstance(tense_data, dict):
+                        continue
+                    
+                    # Insert each person conjugation
+                    for person, conjugation in tense_data.items():
+                        if conjugation:  # Skip None/empty values
+                            cursor.execute("""
+                                INSERT INTO conjugations (verb_id, voice, mood, tense, person, conjugation)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (verb_id, voice_key, mood, tense, person, conjugation))
+                            conjugation_count += 1
+        
+        # Log progress every 1000 verbs
+        if verb_count % 1000 == 0:
+            log.info(f"Processed {verb_count} verbs...")
 
-            # Insert data into the corresponding table
-            table_name = voice_name_table_map[voice]
-            sql_command = f"""INSERT INTO {table_name} VALUES(
-                {conjugation_data['verb']},
-                {conjugation_data['ind_present']},
-                {conjugation_data['ind_passe_simple']},
-                {conjugation_data['ind_futur_simple']},
-                {conjugation_data['ind_passe_compose']},
-                {conjugation_data['ind_plus_que_parfait']},
-                {conjugation_data['ind_passe_anterieur']},
-                {conjugation_data['ind_futur_anterieur']},
-                {conjugation_data['ind_imparfait']},
-                {conjugation_data['sub_present']},
-                {conjugation_data['sub_passe']},
-                {conjugation_data['sub_imparfait']},
-                {conjugation_data['sub_plus_que_parfait']},
-                {conjugation_data['con_present']},
-                {conjugation_data['con_passe']},
-                {conjugation_data['imp_present']},
-                {conjugation_data['imp_passe']},
-                {'1' if conjugation_data['h_aspire'] else '0'}
-            )"""
-            log.verbose(f"Executing SQL command: {sql_command}", gl.CONFIG_VERBOSE)
-            cursor.execute(sql_command)
-
-    # Close connection
-    cursor.close()
+    # Commit and close
     conn.commit()
+    cursor.close()
     conn.close()
+    
+    log.info(f"Database generation complete!")
+    log.info(f"  Verbs: {verb_count}")
+    log.info(f"  Conjugations: {conjugation_count}")
+    log.info(f"  Participles: {participle_count}")
+    log.info(f"  Database size: {os.path.getsize(db_path) / 1024 / 1024:.2f} MB")
+    log.info(f"  Saved to: {db_path}")

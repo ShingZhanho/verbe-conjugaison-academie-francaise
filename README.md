@@ -33,11 +33,14 @@ Under each voice, at most five moods and all of their tenses are included:
 1. `participe` - participle
     - `present` - present participle as a string (e.g., "abaissant")
     - `passe` - past participle with the following keys:
-      - `singulier_m` - masculine singular form
-      - `singulier_f` - feminine singular form
-      - `pluriel_m` - masculine plural form
-      - `pluriel_f` - feminine plural form
-      - `compose` - compound form with auxiliary (e.g., "ayant abaissé")
+      - `sm` - masculine singular form (singulier masculin)
+      - `sf` - feminine singular form (singulier féminin)
+      - `pm` - masculine plural form (pluriel masculin)
+      - `pf` - feminine plural form (pluriel féminin)
+      - `compound_sm` - compound masculine singular with auxiliary (e.g., "ayant abaissé")
+      - `compound_sf` - compound feminine singular with auxiliary
+      - `compound_pm` - compound masculine plural with auxiliary
+      - `compound_pf` - compound feminine plural with auxiliary
 2. `indicatif` - indicative mood
     - `present`
     - `imparfait`
@@ -61,70 +64,105 @@ Under each voice, at most five moods and all of their tenses are included:
 
 If a verb is not conjugated in any tenses of a mood, that entire mood will not appear.
 
-Under each tense, six persons are provided (not applicable for participles):
-1. `je` - first person singular
-2. `tu` - second person singular
-3. `il` - third person singular (masculine)
-4. `nous` - first person plural
-5. `vous` - second person plural
-6. `ils` - third person plural (masculine)
+Under each tense, eight persons are provided (not applicable for participles):
+1. `1s` - first person singular (je)
+2. `2s` - second person singular (tu)
+3. `3sm` - third person singular masculine (il)
+4. `3sf` - third person singular feminine (elle)
+5. `1p` - first person plural (nous)
+6. `2p` - second person plural (vous)
+7. `3pm` - third person plural masculine (ils)
+8. `3pf` - third person plural feminine (elles)
+
+Note that `3sf` has the same conjugation as `3sm`, and `3pf` has the same conjugation as `3pm`.
 
 For participles:
 - The `present` key contains a single string value
-- The `passe` key contains a dictionary with keys: `singulier_m`, `singulier_f`, `pluriel_m`, `pluriel_f`, and `compose`
+- The `passe` key contains a dictionary with keys: `sm`, `sf`, `pm`, `pf`, `compound_sm`, `compound_sf`, `compound_pm`, `compound_pf`
 
 All verb conjugations are in masculine forms. For impersonal verbs, only the third person singular
 and plural are conjugated, but the keys of other persons are still present, with values being `null`.
 
 > [!note]
-> **Support for French Orthography Reform (retification orthographique du français)**
+> **Support for French Orthography Reform (rectification orthographique du français en 1990)**
 > 
-> Some verbs may have more than one conjugation form due to the orthography reforms.
-> The two forms accepted by the AF dictionary are both included in the same key,
-> separated by a comma (`,`).
+> Some verbs have multiple accepted spellings due to the 1990 orthography reform.
+> - If a verb infinitive has multiple forms (e.g., `connaître` vs `connaitre`), both appear as separate entries
+> - Each entry includes metadata:
+>   - `rectification_1990`: Boolean indicating if the verb has a reformed variant
+>   - `rectification_1990_variante`: The alternate spelling (e.g., `connaître` ↔ `connaitre`)
+> - Within conjugation forms, variants are separated by a semicolon (`;`)
+>   - Example: `je vais; je vas` means both forms are accepted
 
 ### File `verbs.db`
 
-An SQLite3 database file containing the conjugation data of all verbs in the list.
-The database has three tables:
-- `ACTIVE_AVOIR` - Conjugation data for active voice with auxiliary verb "avoir"
-- `ACTIVE_ETRE` - Conjugation data for active voice with auxiliary verb "être"
-- `PRONOMINAL` - Conjugation data for reflexive verbs
+An SQLite3 database file containing the conjugation data of all verbs in a normalized relational schema.
 
-The columns of each table are identical, they are:
-- **`verb` (Primary Key) - The infinitive of the verb**
-- `ind_present` - Indicatif, présent
-- `ind_passe_simple` - Indicatif, passé simple
-- `ind_futur_simple` - Indicatif, future simple
-- `ind_passe_compose` - Indicatif, passé composé
-- `ind_plus_que_parfait` - Indicatif, plus-que-parfait
-- `ind_passe_anterieur` - Indicatif, passé antérieur
-- `ind_futur_anterieur` - Indicatif, futur antérieur
-- `ind_imparfait` - Indicatif, imperfect
-- `sub_present` - Subjonctif, présent
-- `sub_passe` - Subjonctif, passé
-- `sub_imparfait` - Subjonctif, imparfait
-- `sub_plus_que_parfait` - Subjonctif, plus-que-parfait
-- `con_present` - Conditionnel, présent
-- `con_passe` - Conditionnel, passé
-- `imp_present` - Impératif, présent
-- `imp_passe` - Impératif, passé
-- `h_aspire` - Whether the verb begins with an "h aspiré" (boolean - `1` for true, `0` for false)
+#### Database Schema
 
-Each cell, **except for impératif**, contains the conjugation of the verb of all six persons,
-in the order of `je`, `tu`, `il`, `nous`, `vous`, `ils`,
-separated by a semi-colon (`;`). If only some persons are conjugated, the rest persons will be empty (e.g. `agir` in 
-`PRONOMINAL` table, `ind_present` column's value is `;;s'agit;;;`). If none of the persons are conjugated,
-the cell will be `NULL`.
+The database uses a normalized design with three main tables:
 
-For **impératif**, the cell contains only three persons, in the order of `tu`, `nous`, `vous`,
-separated by a semi-colon (`;`).
+**`verbs` table** - Core verb metadata
+- `id` (INTEGER PRIMARY KEY) - Unique verb identifier
+- `infinitive` (TEXT UNIQUE NOT NULL) - The infinitive form of the verb
+- `h_aspire` (BOOLEAN) - Whether the verb begins with an "h aspiré"
+- `rectification_1990` (BOOLEAN) - Whether the verb has a 1990 reform variant
+- `rectification_1990_variante` (TEXT) - The alternate spelling (e.g., `connaître` ↔ `connaitre`)
 
-> [!note]
-> Like the JSON files, if more than one conjugation form is accepted by the AF dictionary
-> due to the orthography reforms, the two forms are separated by a comma (`,`). For example, the verb
-> `feuilleter` in table `ACTIVE_AVOIR`, column `ind_futur_simple` has the value
-> `feuilletterai,feuillèterai;feuilletteras,feuillèteras;feuillettera,feuillètera;feuilletterons,feuillèterons;feuilletterez,feuillèterez;feuilletteront,feuillèteront`
+**`conjugations` table** - All person conjugations (normalized)
+- `id` (INTEGER PRIMARY KEY) - Unique conjugation identifier
+- `verb_id` (INTEGER) - Foreign key to `verbs.id`
+- `voice` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
+- `mood` (TEXT) - Mood: `indicatif`, `subjonctif`, `conditionnel`, or `imperatif`
+- `tense` (TEXT) - Tense: `present`, `imparfait`, `passe_simple`, etc.
+- `person` (TEXT) - Person: `1s`, `2s`, `3sm`, `3sf`, `1p`, `2p`, `3pm`, or `3pf`
+- `conjugation` (TEXT) - The conjugated form
+- **Unique constraint:** `(verb_id, voice, mood, tense, person)`
+
+**`participles` table** - Participle forms
+- `id` (INTEGER PRIMARY KEY) - Unique participle identifier
+- `verb_id` (INTEGER) - Foreign key to `verbs.id`
+- `voice` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
+- `form` (TEXT) - Form: `present`, `passe_sm`, `passe_sf`, `passe_pm`, `passe_pf`, `passe_compound_sm`, `passe_compound_sf`, `passe_compound_pm`, or `passe_compound_pf`
+- `participle` (TEXT) - The participle form
+- **Unique constraint:** `(verb_id, voice, form)`
+
+#### Indexes
+The database includes indexes on commonly queried fields for optimal performance:
+- `idx_verbs_infinitive` - Fast lookup by infinitive
+- `idx_verbs_variants` - Fast lookup of reform variants
+- `idx_conjugations_lookup` - Fast lookup by verb, voice, mood, tense, person
+- `idx_conjugations_search` - Fast search by conjugation text
+- `idx_participles_lookup` - Fast lookup of participle forms
+
+#### Example Queries
+
+```sql
+-- Get all present indicative forms of "être" across all voices
+SELECT voice, person, conjugation
+FROM conjugations c
+JOIN verbs v ON c.verb_id = v.id
+WHERE v.infinitive = 'être' AND mood = 'indicatif' AND tense = 'present'
+ORDER BY voice, person;
+
+-- Find all verbs with 1990 reform variants
+SELECT infinitive, rectification_1990_variante
+FROM verbs
+WHERE rectification_1990 = 1 AND rectification_1990_variante IS NOT NULL;
+
+-- Get all participles for a verb
+SELECT voice, form, participle
+FROM participles p
+JOIN verbs v ON p.verb_id = v.id
+WHERE v.infinitive = 'abaisser';
+
+-- Find verbs where the conjugation contains a specific pattern
+SELECT DISTINCT v.infinitive
+FROM verbs v
+JOIN conjugations c ON v.id = c.verb_id
+WHERE c.conjugation LIKE '%aient%'
+LIMIT 10;
+```
 
 ## Running the Script
 
