@@ -251,7 +251,7 @@ def __parse_imperative_table(table_rows_tags) -> dict:
 
         conjugated_verb_tag = str(list(row.find("td", class_="conj_verb").stripped_strings)[0])
         conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
-        conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
+        conjugated_verb = conjugated_verb.split(",")[0].replace(" ", "")  # keep only the masculine form
 
         key = "tu" if index == 0 else "nous" if index == 1 else "vous"
         result[key] = f"{auxiliary_verb}{conjugated_verb}"
