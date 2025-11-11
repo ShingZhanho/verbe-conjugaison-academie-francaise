@@ -109,7 +109,7 @@ def generate_sqlite_db(loaded_json):
                     conjugation_data[key] = "NULL"
                 else:
                     # Flatten the dictionary for each pronoun
-                    pronoun_dict = conjugation_data.get(key, {})
+                    pronoun_dict = conjugation_data[key]
                     if key[:3] == "imp":
                         # imperative mood tenses have only three pronouns
                         pronouns = ["tu", "nous", "vous"]
