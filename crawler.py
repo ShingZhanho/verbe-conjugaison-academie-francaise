@@ -142,7 +142,7 @@ def main():
                 with open(f"./output/cache/{infinitive}.txt", "w", encoding="utf-8") as out:
                     out.write(f"PARSE_FAILED")
 
-    log.info("All verbs ({verbs_counter}) processed.")
+    log.info(f"All verbs ({verbs_counter}) processed.")
     
     # == MERGE ALL PARTIAL JSON FILES ==
     with open("./output/verbs.min.json", "w", encoding="utf-8") as out:
