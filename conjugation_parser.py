@@ -95,11 +95,17 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
     result = {}
 
     # Find all moods within the div
+    participe_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_par")
     indicatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_ind")
     subjonctif_div      = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_sub")
     conditionnel_div    = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_con")
     imperatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_imp")
 
+    if participe_div is not None:
+        log.info(f"    Parsing participle mood...")
+        result["participe"] = __parse_participle_div(participe_div)
+    else:
+        log.warning(f"    The verb does not seem to contain a participle mood.")
     if indicatif_div is not None:
         log.info(f"    Parsing indicative mood...")
         result["indicatif"] = __parse_mood_div(indicatif_div)
@@ -121,6 +127,51 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
     else:
         log.warning(f"    The verb does not seem to contain an imperative mood.")
 
+    return result
+
+def __parse_participle_div(div_tag) -> dict:
+    """
+    (Internal) Parses a participle div tag and extracts the participle forms.
+    Args:
+        div_tag: The HTML element containing the participle div (`div#active_par` or `div#prono_par`).
+    Returns:
+        dict: A dictionary containing the participle data with 'present' and 'passe' keys.
+    """
+    result = {}
+    
+    # Find present and passé tense divs
+    tense_divs = div_tag.find_all("div", class_="tense")
+    
+    for tense_div in tense_divs:
+        tense_header = tense_div.find("h4", class_="relation")
+        if tense_header is None:
+            continue
+        
+        tense_name = tense_header.get_text(strip=True).lower()
+        
+        # Map French tense names to English keys
+        if tense_name == "présent":
+            tense_key = "present"
+        elif tense_name == "passé":
+            tense_key = "passe"
+        else:
+            continue
+        
+        # Get all table rows with conjugation data
+        conj_lines = tense_div.find_all("tr", class_="conj_line")
+        forms = []
+        
+        for line in conj_lines:
+            # For participles, we just extract the verb form
+            verb_td = line.find("td", class_="conj_verb")
+            if verb_td:
+                verb_text = verb_td.get_text(strip=True)
+                if verb_text:
+                    forms.append(verb_text)
+        
+        if forms:
+            result[tense_key] = forms
+    
     return result
 
 def __parse_mood_div(div_tag, is_imperatif: bool = False) -> dict:

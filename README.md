@@ -29,8 +29,13 @@ Passive voice is not covered.
 There is another extra key `h_aspire` at the same level as the voices, which indicates whether the verb
 begins with an "h aspiré". This value is boolean.
 
-Under each voice, at most four moods and all of their tenses are included:
-1. `indicatif` - indicative mood
+Under each voice, at most five moods and all of their tenses are included:
+1. `participe` - participle
+    - `present` - present participle (e.g., "abaissant")
+    - `passe` - past participle forms: 
+      - Line 1: All four forms (masculine sing., feminine sing., masculine pl., feminine pl.) separated by commas
+      - Line 2: Compound form with auxiliary (e.g., "ayant abaissé")
+2. `indicatif` - indicative mood
     - `present`
     - `imparfait`
     - `passe_simple`
@@ -39,30 +44,29 @@ Under each voice, at most four moods and all of their tenses are included:
     - `plus_que_parfait`
     - `passe_anterieur`
     - `futur_anterieur`
-2. `subjonctif` - subjunctive mood
+3. `subjonctif` - subjunctive mood
     - `present`
     - `imparfait`
     - `passe`
     - `plus_que_parfait`
-3. `conditionnel` - conditional mood
+4. `conditionnel` - conditional mood
     - `present`
     - `passé`
-4. `imperatif` - imperative mood
+5. `imperatif` - imperative mood
     - `present`
     - `passe`
 
-Note that participles are not included in the release file. You may modify the script `conjugation_parser.py` to parse the
-HTML files and extract the participles if you need them.
-
 If a verb is not conjugated in any tenses of a mood, that entire mood will not appear.
 
-Under each tense, six persons are provided:
+Under each tense, six persons are provided (not applicable for participles):
 1. `je` - first person singular
 2. `tu` - second person singular
 3. `il` - third person singular (masculine)
 4. `nous` - first person plural
 5. `vous` - second person plural
 6. `ils` - third person plural (masculine)
+
+For participles, the data structure is an array of strings rather than a dictionary keyed by person.
 
 All verb conjugations are in masculine forms. For impersonal verbs, only the third person singular
 and plural are conjugated, but the keys of other persons are still present, with values being `null`.
