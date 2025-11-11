@@ -39,52 +39,52 @@ def generate_sqlite_db(loaded_json):
     # == CREATE NORMALIZED SCHEMA ==
     log.info("Creating database schema...")
     
-    # Core verb metadata table
+    # Core verb metadata table (verbes)
     cursor.execute("""
-        CREATE TABLE verbs (
+        CREATE TABLE verbes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            infinitive TEXT UNIQUE NOT NULL,
+            infinitif TEXT UNIQUE NOT NULL,
             h_aspire BOOLEAN DEFAULT 0,
             rectification_1990 BOOLEAN DEFAULT 0,
             rectification_1990_variante TEXT
         )
     """)
     
-    # Conjugations table (normalized by person)
+    # Conjugations table (conjugaisons) - normalized by person
     cursor.execute("""
-        CREATE TABLE conjugations (
+        CREATE TABLE conjugaisons (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            verb_id INTEGER NOT NULL,
-            voice TEXT NOT NULL,
-            mood TEXT NOT NULL,
-            tense TEXT NOT NULL,
-            person TEXT NOT NULL,
-            conjugation TEXT NOT NULL,
-            FOREIGN KEY (verb_id) REFERENCES verbs(id) ON DELETE CASCADE,
-            UNIQUE(verb_id, voice, mood, tense, person)
+            verbe_id INTEGER NOT NULL,
+            voix TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            temps TEXT NOT NULL,
+            personne TEXT NOT NULL,
+            conjugaison TEXT NOT NULL,
+            FOREIGN KEY (verbe_id) REFERENCES verbes(id) ON DELETE CASCADE,
+            UNIQUE(verbe_id, voix, mode, temps, personne)
         )
     """)
     
-    # Participles table
+    # Participles table (participes)
     cursor.execute("""
-        CREATE TABLE participles (
+        CREATE TABLE participes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            verb_id INTEGER NOT NULL,
-            voice TEXT NOT NULL,
-            form TEXT NOT NULL,
-            participle TEXT NOT NULL,
-            FOREIGN KEY (verb_id) REFERENCES verbs(id) ON DELETE CASCADE,
-            UNIQUE(verb_id, voice, form)
+            verbe_id INTEGER NOT NULL,
+            voix TEXT NOT NULL,
+            forme TEXT NOT NULL,
+            participe TEXT NOT NULL,
+            FOREIGN KEY (verbe_id) REFERENCES verbes(id) ON DELETE CASCADE,
+            UNIQUE(verbe_id, voix, forme)
         )
     """)
     
     # Create indexes for common queries
     log.info("Creating indexes...")
-    cursor.execute("CREATE INDEX idx_verbs_infinitive ON verbs(infinitive)")
-    cursor.execute("CREATE INDEX idx_verbs_variants ON verbs(rectification_1990_variante)")
-    cursor.execute("CREATE INDEX idx_conjugations_lookup ON conjugations(verb_id, voice, mood, tense, person)")
-    cursor.execute("CREATE INDEX idx_conjugations_search ON conjugations(conjugation)")
-    cursor.execute("CREATE INDEX idx_participles_lookup ON participles(verb_id, voice, form)")
+    cursor.execute("CREATE INDEX idx_verbes_infinitif ON verbes(infinitif)")
+    cursor.execute("CREATE INDEX idx_verbes_variantes ON verbes(rectification_1990_variante)")
+    cursor.execute("CREATE INDEX idx_conjugaisons_recherche ON conjugaisons(verbe_id, voix, mode, temps, personne)")
+    cursor.execute("CREATE INDEX idx_conjugaisons_texte ON conjugaisons(conjugaison)")
+    cursor.execute("CREATE INDEX idx_participes_recherche ON participes(verbe_id, voix, forme)")
 
     # == LOAD DATA INTO TABLES ==
     log.info(f"Loading data for {len(loaded_json)} verbs...")
@@ -95,7 +95,7 @@ def generate_sqlite_db(loaded_json):
     for infinitive, verb_data in loaded_json.items():
         # Insert verb metadata
         cursor.execute("""
-            INSERT INTO verbs (infinitive, h_aspire, rectification_1990, rectification_1990_variante)
+            INSERT INTO verbes (infinitif, h_aspire, rectification_1990, rectification_1990_variante)
             VALUES (?, ?, ?, ?)
         """, (
             infinitive,
@@ -118,7 +118,7 @@ def generate_sqlite_db(loaded_json):
                 # Present participle
                 if participe_data.get('present'):
                     cursor.execute("""
-                        INSERT INTO participles (verb_id, voice, form, participle)
+                        INSERT INTO participes (verbe_id, voix, forme, participe)
                         VALUES (?, ?, ?, ?)
                     """, (verb_id, voice_key, 'present', participe_data['present']))
                     participle_count += 1
@@ -127,7 +127,7 @@ def generate_sqlite_db(loaded_json):
                 passe_data = participe_data.get('passe', {})
                 for form_key, participle_value in passe_data.items():
                     cursor.execute("""
-                        INSERT INTO participles (verb_id, voice, form, participle)
+                        INSERT INTO participes (verbe_id, voix, forme, participe)
                         VALUES (?, ?, ?, ?)
                     """, (verb_id, voice_key, f'passe_{form_key}', participle_value))
                     participle_count += 1
@@ -146,7 +146,7 @@ def generate_sqlite_db(loaded_json):
                     for person, conjugation in tense_data.items():
                         if conjugation:  # Skip None/empty values
                             cursor.execute("""
-                                INSERT INTO conjugations (verb_id, voice, mood, tense, person, conjugation)
+                                INSERT INTO conjugaisons (verbe_id, voix, mode, temps, personne, conjugaison)
                                 VALUES (?, ?, ?, ?, ?, ?)
                             """, (verb_id, voice_key, mood, tense, person, conjugation))
                             conjugation_count += 1

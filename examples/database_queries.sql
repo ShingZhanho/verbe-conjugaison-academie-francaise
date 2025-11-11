@@ -3,6 +3,11 @@
 -- 
 -- This file contains example queries demonstrating how to use the normalized
 -- database schema to extract various conjugation information.
+--
+-- NOTE: All table and column names are in French with accents removed:
+--   - verbes (table) with infinitif (column)
+--   - conjugaisons (table) with verbe_id, voix, mode, temps, personne, conjugaison
+--   - participes (table) with verbe_id, voix, forme, participe
 
 -- ============================================================================
 -- BASIC QUERIES
@@ -10,46 +15,46 @@
 
 -- 1. Get all conjugations for a specific verb
 SELECT 
-    v.infinitive,
-    c.voice,
-    c.mood,
-    c.tense,
-    c.person,
-    c.conjugation
-FROM conjugations c
-JOIN verbs v ON c.verb_id = v.id
-WHERE v.infinitive = 'être'
-ORDER BY c.voice, c.mood, c.tense, 
-    CASE c.person 
+    v.infinitif,
+    c.voix,
+    c.mode,
+    c.temps,
+    c.personnenene,
+    c.conjugaison
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE v.infinitif = 'être'
+ORDER BY c.voix, c.mode, c.temps, 
+    CASE c.personnenene 
         WHEN '1s' THEN 1 WHEN '2s' THEN 2 WHEN '3sm' THEN 3 WHEN '3sf' THEN 4
         WHEN '1p' THEN 5 WHEN '2p' THEN 6 WHEN '3pm' THEN 7 WHEN '3pf' THEN 8
     END;
 
 -- 2. Get present indicative conjugation for a verb
 SELECT 
-    person,
-    conjugation
-FROM conjugations c
-JOIN verbs v ON c.verb_id = v.id
-WHERE v.infinitive = 'aller' 
-    AND mood = 'indicatif' 
-    AND tense = 'present'
-    AND voice = 'voix_active_etre'
+    personne,
+    conjugaison
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE v.infinitif = 'aller' 
+    AND mode = 'indicatif' 
+    AND temps = 'present'
+    AND voix = 'voix_active_etre'
 ORDER BY 
-    CASE person 
+    CASE personne 
         WHEN '1s' THEN 1 WHEN '2s' THEN 2 WHEN '3sm' THEN 3 WHEN '3sf' THEN 4
         WHEN '1p' THEN 5 WHEN '2p' THEN 6 WHEN '3pm' THEN 7 WHEN '3pf' THEN 8
     END;
 
 -- 3. Get all participles for a verb
 SELECT 
-    voice,
-    form,
-    participle
-FROM participles p
-JOIN verbs v ON p.verb_id = v.id
-WHERE v.infinitive = 'abaisser'
-ORDER BY voice, form;
+    voix,
+    forme,
+    participe
+FROM participes p
+JOIN verbes v ON p.verbe_id = v.id
+WHERE v.infinitif = 'abaisser'
+ORDER BY voix, forme;
 
 -- ============================================================================
 -- VERBS WITH H ASPIRÉ
@@ -67,7 +72,7 @@ ORDER BY infinitive;
 
 -- 5. Find all verbs with 1990 reform variants
 SELECT 
-    infinitive,
+    infinitif,
     rectification_1990_variante
 FROM verbs
 WHERE rectification_1990 = 1 
@@ -76,10 +81,10 @@ ORDER BY infinitive;
 
 -- 6. Get both spellings of a reformed verb (e.g., connaître/connaitre)
 SELECT 
-    infinitive,
+    infinitif,
     rectification_1990_variante as alternate_spelling
 FROM verbs
-WHERE infinitive IN ('connaître', 'connaitre')
+WHERE infinitif IN ('connaître', 'connaitre')
 ORDER BY infinitive;
 
 -- 7. Count how many verb pairs have reform variants
@@ -94,24 +99,24 @@ WHERE rectification_1990 = 1
 
 -- 8. Find verbs that use "être" as auxiliary
 SELECT DISTINCT infinitive
-FROM verbs v
-JOIN conjugations c ON v.id = c.verb_id
-WHERE c.voice = 'voix_active_etre'
+FROM verbes v
+JOIN conjugaisons c ON v.id = c.verbe_id
+WHERE c.voix = 'voix_active_etre'
 ORDER BY infinitive
 LIMIT 20;
 
 -- 9. Find verbs that have both "avoir" and "être" auxiliary forms
-SELECT DISTINCT v.infinitive
-FROM verbs v
+SELECT DISTINCT v.infinitif
+FROM verbes v
 WHERE EXISTS (
-    SELECT 1 FROM conjugations c1 
-    WHERE c1.verb_id = v.id AND c1.voice = 'voix_active_avoir'
+    SELECT 1 FROM conjugaisons c1 
+    WHERE c1.verbe_id = v.id AND c1.voix = 'voix_active_avoir'
 )
 AND EXISTS (
-    SELECT 1 FROM conjugations c2 
-    WHERE c2.verb_id = v.id AND c2.voice = 'voix_active_etre'
+    SELECT 1 FROM conjugaisons c2 
+    WHERE c2.verbe_id = v.id AND c2.voix = 'voix_active_etre'
 )
-ORDER BY v.infinitive
+ORDER BY v.infinitif
 LIMIT 20;
 
 -- ============================================================================
@@ -119,11 +124,11 @@ LIMIT 20;
 -- ============================================================================
 
 -- 10. Find all pronominal verbs
-SELECT DISTINCT v.infinitive
-FROM verbs v
-JOIN conjugations c ON v.id = c.verb_id
-WHERE c.voice = 'voix_prono'
-ORDER BY v.infinitive
+SELECT DISTINCT v.infinitif
+FROM verbes v
+JOIN conjugaisons c ON v.id = c.verbe_id
+WHERE c.voix = 'voix_prono'
+ORDER BY v.infinitif
 LIMIT 20;
 
 -- 11. Compare active vs pronominal forms
@@ -131,9 +136,9 @@ SELECT
     'active' as form,
     person,
     conjugation
-FROM conjugations c
-JOIN verbs v ON c.verb_id = v.id
-WHERE v.infinitive = 'abaisser'
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE v.infinitif = 'abaisser'
     AND voice = 'voix_active_avoir'
     AND mood = 'indicatif'
     AND tense = 'present'
@@ -142,9 +147,9 @@ SELECT
     'pronominal' as form,
     person,
     conjugation
-FROM conjugations c
-JOIN verbs v ON c.verb_id = v.id
-WHERE v.infinitive = 'abaisser'
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE v.infinitif = 'abaisser'
     AND voice = 'voix_prono'
     AND mood = 'indicatif'
     AND tense = 'present'
@@ -157,38 +162,38 @@ ORDER BY person, form;
 -- 12. Find verbs ending in -er
 SELECT infinitive
 FROM verbs
-WHERE infinitive LIKE '%er'
+WHERE infinitif LIKE '%er'
 ORDER BY infinitive
 LIMIT 20;
 
 -- 13. Find verbs where 1st person singular present ends in -ais
-SELECT DISTINCT v.infinitive
-FROM verbs v
-JOIN conjugations c ON v.id = c.verb_id
-WHERE c.person = '1s'
-    AND c.mood = 'indicatif'
-    AND c.tense = 'present'
-    AND c.conjugation LIKE '%ais'
-ORDER BY v.infinitive
+SELECT DISTINCT v.infinitif
+FROM verbes v
+JOIN conjugaisons c ON v.id = c.verbe_id
+WHERE c.personnene = '1s'
+    AND c.mode = 'indicatif'
+    AND c.temps = 'present'
+    AND c.conjugaison LIKE '%ais'
+ORDER BY v.infinitif
 LIMIT 20;
 
 -- 14. Find irregular verbs in present tense (e.g., stem changes)
 -- Example: verbs where 1s and 1p have different stems
-SELECT DISTINCT v.infinitive,
-    c1.conjugation as first_singular,
-    c2.conjugation as first_plural
-FROM verbs v
-JOIN conjugations c1 ON v.id = c1.verb_id AND c1.person = '1s'
-JOIN conjugations c2 ON v.id = c2.verb_id AND c2.person = '1p'
-WHERE c1.mood = 'indicatif' 
-    AND c1.tense = 'present'
-    AND c2.mood = 'indicatif' 
-    AND c2.tense = 'present'
-    AND c1.voice = c2.voice
-    AND v.infinitive LIKE '%er'
-    AND SUBSTR(c1.conjugation, 1, LENGTH(c1.conjugation)-2) != 
-        SUBSTR(c2.conjugation, 1, LENGTH(c2.conjugation)-3)
-ORDER BY v.infinitive
+SELECT DISTINCT v.infinitif,
+    c1.conjugaison as first_singular,
+    c2.conjugaison as first_plural
+FROM verbes v
+JOIN conjugaisons c1 ON v.id = c1.verbe_id AND c1.personne = '1s'
+JOIN conjugaisons c2 ON v.id = c2.verbe_id AND c2.personne = '1p'
+WHERE c1.mode = 'indicatif' 
+    AND c1.temps = 'present'
+    AND c2.mode = 'indicatif' 
+    AND c2.temps = 'present'
+    AND c1.voix = c2.voix
+    AND v.infinitif LIKE '%er'
+    AND SUBSTR(c1.conjugaison, 1, LENGTH(c1.conjugaison)-2) != 
+        SUBSTR(c2.conjugaison, 1, LENGTH(c2.conjugaison)-3)
+ORDER BY v.infinitif
 LIMIT 20;
 
 -- ============================================================================
@@ -235,46 +240,46 @@ LIMIT 20;
 -- ============================================================================
 
 -- 19. Find verbs with identical conjugations across different persons
-SELECT DISTINCT v.infinitive
-FROM verbs v
-JOIN conjugations c1 ON v.id = c1.verb_id AND c1.person = '1s'
-JOIN conjugations c2 ON v.id = c2.verb_id AND c2.person = '3sm'
-WHERE c1.mood = 'indicatif'
-    AND c1.tense = 'present'
-    AND c2.mood = 'indicatif'
-    AND c2.tense = 'present'
-    AND c1.voice = c2.voice
-    AND c1.conjugation = c2.conjugation
-ORDER BY v.infinitive
+SELECT DISTINCT v.infinitif
+FROM verbes v
+JOIN conjugaisons c1 ON v.id = c1.verbe_id AND c1.personne = '1s'
+JOIN conjugaisons c2 ON v.id = c2.verbe_id AND c2.personne = '3sm'
+WHERE c1.mode = 'indicatif'
+    AND c1.temps = 'present'
+    AND c2.mode = 'indicatif'
+    AND c2.temps = 'present'
+    AND c1.voix = c2.voix
+    AND c1.conjugaison = c2.conjugaison
+ORDER BY v.infinitif
 LIMIT 20;
 
 -- 20. Find verbs that exist only in impersonal form (only 3sm conjugated)
-SELECT DISTINCT v.infinitive
-FROM verbs v
+SELECT DISTINCT v.infinitif
+FROM verbes v
 WHERE EXISTS (
-    SELECT 1 FROM conjugations c
-    WHERE c.verb_id = v.id 
-        AND c.person = '3sm'
-        AND c.mood = 'indicatif'
-        AND c.tense = 'present'
+    SELECT 1 FROM conjugaisons c
+    WHERE c.verbe_id = v.id 
+        AND c.personnene = '3sm'
+        AND c.mode = 'indicatif'
+        AND c.temps = 'present'
 )
 AND NOT EXISTS (
-    SELECT 1 FROM conjugations c
-    WHERE c.verb_id = v.id 
-        AND c.person = '1s'
-        AND c.mood = 'indicatif'
-        AND c.tense = 'present'
+    SELECT 1 FROM conjugaisons c
+    WHERE c.verbe_id = v.id 
+        AND c.personnene = '1s'
+        AND c.mode = 'indicatif'
+        AND c.temps = 'present'
 )
-ORDER BY v.infinitive
+ORDER BY v.infinitif
 LIMIT 20;
 
 -- 21. Get conjugation comparison across tenses
 SELECT 
     tense,
     conjugation
-FROM conjugations c
-JOIN verbs v ON c.verb_id = v.id
-WHERE v.infinitive = 'faire'
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE v.infinitif = 'faire'
     AND voice = 'voix_active_avoir'
     AND mood = 'indicatif'
     AND person = '1s'
@@ -303,9 +308,9 @@ SELECT
         WHEN '3pf' THEN 'elles'
     END as pronoun,
     conjugation
-FROM conjugations c
-JOIN verbs v ON c.verb_id = v.id
-WHERE v.infinitive = 'parler'
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE v.infinitif = 'parler'
     AND voice = 'voix_active_avoir'
     AND mood = 'indicatif'
     AND tense = 'present'

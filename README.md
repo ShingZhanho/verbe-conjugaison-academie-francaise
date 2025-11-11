@@ -100,67 +100,67 @@ An SQLite3 database file containing the conjugation data of all verbs in a norma
 
 #### Database Schema
 
-The database uses a normalized design with three main tables:
+The database uses a normalized design with three main tables (all names in French with accents removed):
 
-**`verbs` table** - Core verb metadata
+**`verbes` table** - Core verb metadata
 - `id` (INTEGER PRIMARY KEY) - Unique verb identifier
-- `infinitive` (TEXT UNIQUE NOT NULL) - The infinitive form of the verb
+- `infinitif` (TEXT UNIQUE NOT NULL) - The infinitive form of the verb
 - `h_aspire` (BOOLEAN) - Whether the verb begins with an "h aspiré"
 - `rectification_1990` (BOOLEAN) - Whether the verb has a 1990 reform variant
 - `rectification_1990_variante` (TEXT) - The alternate spelling (e.g., `connaître` ↔ `connaitre`)
 
-**`conjugations` table** - All person conjugations (normalized)
+**`conjugaisons` table** - All person conjugations (normalized)
 - `id` (INTEGER PRIMARY KEY) - Unique conjugation identifier
-- `verb_id` (INTEGER) - Foreign key to `verbs.id`
-- `voice` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
-- `mood` (TEXT) - Mood: `indicatif`, `subjonctif`, `conditionnel`, or `imperatif`
-- `tense` (TEXT) - Tense: `present`, `imparfait`, `passe_simple`, etc.
-- `person` (TEXT) - Person: `1s`, `2s`, `3sm`, `3sf`, `1p`, `2p`, `3pm`, or `3pf`
-- `conjugation` (TEXT) - The conjugated form
-- **Unique constraint:** `(verb_id, voice, mood, tense, person)`
+- `verbe_id` (INTEGER) - Foreign key to `verbes.id`
+- `voix` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
+- `mode` (TEXT) - Mood: `indicatif`, `subjonctif`, `conditionnel`, or `imperatif`
+- `temps` (TEXT) - Tense: `present`, `imparfait`, `passe_simple`, etc.
+- `personne` (TEXT) - Person: `1s`, `2s`, `3sm`, `3sf`, `1p`, `2p`, `3pm`, or `3pf`
+- `conjugaison` (TEXT) - The conjugated form
+- **Unique constraint:** `(verbe_id, voix, mode, temps, personne)`
 
-**`participles` table** - Participle forms
+**`participes` table** - Participle forms
 - `id` (INTEGER PRIMARY KEY) - Unique participle identifier
-- `verb_id` (INTEGER) - Foreign key to `verbs.id`
-- `voice` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
-- `form` (TEXT) - Form: `present`, `passe_sm`, `passe_sf`, `passe_pm`, `passe_pf`, `passe_compound_sm`, `passe_compound_sf`, `passe_compound_pm`, or `passe_compound_pf`
-- `participle` (TEXT) - The participle form
-- **Unique constraint:** `(verb_id, voice, form)`
+- `verbe_id` (INTEGER) - Foreign key to `verbes.id`
+- `voix` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
+- `forme` (TEXT) - Form: `present`, `passe_sm`, `passe_sf`, `passe_pm`, `passe_pf`, `passe_compound_sm`, `passe_compound_sf`, `passe_compound_pm`, or `passe_compound_pf`
+- `participe` (TEXT) - The participle form
+- **Unique constraint:** `(verbe_id, voix, forme)`
 
 #### Indexes
 The database includes indexes on commonly queried fields for optimal performance:
-- `idx_verbs_infinitive` - Fast lookup by infinitive
-- `idx_verbs_variants` - Fast lookup of reform variants
-- `idx_conjugations_lookup` - Fast lookup by verb, voice, mood, tense, person
-- `idx_conjugations_search` - Fast search by conjugation text
-- `idx_participles_lookup` - Fast lookup of participle forms
+- `idx_verbes_infinitif` - Fast lookup by infinitive
+- `idx_verbes_variantes` - Fast lookup of reform variants
+- `idx_conjugaisons_recherche` - Fast lookup by verb, voice, mood, tense, person
+- `idx_conjugaisons_texte` - Fast search by conjugation text
+- `idx_participes_recherche` - Fast lookup of participle forms
 
 #### Example Queries
 
 ```sql
 -- Get all present indicative forms of "être" across all voices
-SELECT voice, person, conjugation
-FROM conjugations c
-JOIN verbs v ON c.verb_id = v.id
-WHERE v.infinitive = 'être' AND mood = 'indicatif' AND tense = 'present'
-ORDER BY voice, person;
+SELECT voix, personne, conjugaison
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE v.infinitif = 'être' AND mode = 'indicatif' AND temps = 'present'
+ORDER BY voix, personne;
 
 -- Find all verbs with 1990 reform variants
-SELECT infinitive, rectification_1990_variante
-FROM verbs
+SELECT infinitif, rectification_1990_variante
+FROM verbes
 WHERE rectification_1990 = 1 AND rectification_1990_variante IS NOT NULL;
 
 -- Get all participles for a verb
-SELECT voice, form, participle
-FROM participles p
-JOIN verbs v ON p.verb_id = v.id
-WHERE v.infinitive = 'abaisser';
+SELECT voix, forme, participe
+FROM participes p
+JOIN verbes v ON p.verbe_id = v.id
+WHERE v.infinitif = 'abaisser';
 
 -- Find verbs where the conjugation contains a specific pattern
-SELECT DISTINCT v.infinitive
-FROM verbs v
-JOIN conjugations c ON v.id = c.verb_id
-WHERE c.conjugation LIKE '%aient%'
+SELECT DISTINCT v.infinitif
+FROM verbes v
+JOIN conjugaisons c ON v.id = c.verbe_id
+WHERE c.conjugaison LIKE '%aient%'
 LIMIT 10;
 ```
 
