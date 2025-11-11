@@ -1,197 +1,309 @@
 # verbe-conjugaison-académie-française
 
-This repository hosts a list of French verbs with their conjugations, obtained from the Académie française's (AF) dictionary,
-and also the Python scripts used to generate the conjugation tables.
+A comprehensive dataset of **6,288 French verbs** with complete conjugation data extracted from the [Académie française's official dictionary](https://dictionnaire-academie.fr/). This repository includes both the parsed conjugation data and the Python scripts used to generate it.
 
-The list of verb infinitives (`infinitives.txt`) is obtained from the AF dictionary, using the script options `-E:GEN-INFINITIVES`.
-The list includes all 6,250 verbs that are available in the 9th edition of the dictionary.
+## 📊 Dataset Overview
 
-## Format of the Release Artefacts
+- **6,288 verbs** from the 9th edition of the Académie française dictionary
+- **Complete conjugation tables** across all moods, tenses, and persons
+- **Gender-aware conjugations** - Separate forms for masculine/feminine when they differ
+- **Three output formats**: JSON (formatted), JSON (minified), and SQLite3 database
+- **Multi-threaded parser** for efficient data generation
+- **1990 orthography reform support** with variant tracking
 
-### Files `verbs.json` and `verbs.min.json`
+## 🚀 Quick Start
 
-The release artifacts include two JSON files:
-- `verbs.json` - The full conjugation data of all verbs in the list, formatted for readability.
-- `verbs.min.json` - A minified version of the conjugation data.
+### Installation
 
-> [!note]
-> All non-ASCII characters in the JSON file are NOT escaped.
-> All JSON keys have their accents removed, and are in lowercase.
+```bash
+# Clone the repository
+git clone https://github.com/ShingZhanho/verbe-conjugaison-academie-francaise.git
+cd verbe-conjugaison-academie-francaise
 
-Each verb infinitive is a key in the JSON file.
-Under each infinitive, at most three voices are provided:
-1. `voix_active_avoir` - active voice with auxiliary verb "avoir"
-2. `voix_active_etre` - active voice with auxiliary verb "être"
-3. `voix_prono` - verb conjugated in reflexive form
+# Install dependencies
+pip install -r requirements.txt
+```
 
-Passive voice is not covered.
+### Usage
 
-There is another extra key `h_aspire` at the same level as the voices, which indicates whether the verb
-begins with an "h aspiré". This value is boolean.
+```bash
+# Generate JSON files (uses 4 threads by default)
+python crawler.py
 
-Under each voice, at most five moods and all of their tenses are included:
-1. `participe` - participle
-    - `present` - present participle as a string (e.g., "abaissant")
-    - `passe` - past participle with the following keys:
-      - `sm` - masculine singular form (singulier masculin)
-      - `sf` - feminine singular form (singulier féminin)
-      - `pm` - masculine plural form (pluriel masculin)
-      - `pf` - feminine plural form (pluriel féminin)
-      - `compound_sm` - compound masculine singular with auxiliary (e.g., "ayant abaissé")
-      - `compound_sf` - compound feminine singular with auxiliary
-      - `compound_pm` - compound masculine plural with auxiliary
-      - `compound_pf` - compound feminine plural with auxiliary
-2. `indicatif` - indicative mood
-    - `present`
-    - `imparfait`
-    - `passe_simple`
-    - `futur_simple`
-    - `passe_compose`
-    - `plus_que_parfait`
-    - `passe_anterieur`
-    - `futur_anterieur`
-3. `subjonctif` - subjunctive mood
-    - `present`
-    - `imparfait`
-    - `passe`
-    - `plus_que_parfait`
-4. `conditionnel` - conditional mood
-    - `present`
-    - `passé`
-5. `imperatif` - imperative mood
-    - `present`
-    - `passe`
+# Generate JSON + SQLite database
+python crawler.py --gen-sqlite3
 
-If a verb is not conjugated in any tenses of a mood, that entire mood will not appear.
+# Generate with 8 threads for faster processing
+python crawler.py --max-threads 8
 
-Under each tense, eight persons are provided (not applicable for participles):
-1. `1s` - first person singular (je)
-2. `2s` - second person singular (tu)
-3. `3sm` - third person singular masculine (il)
-4. `3sf` - third person singular feminine (elle)
-5. `1p` - first person plural (nous)
-6. `2p` - second person plural (vous)
-7. `3pm` - third person plural masculine (ils)
-8. `3pf` - third person plural feminine (elles)
+# Force fresh data (ignore cache)
+python crawler.py --ignore-cache
 
-Note that `3sf` has the same conjugation as `3sm`, and `3pf` has the same conjugation as `3pm`.
+# Generate infinitives list only
+python crawler.py --gen-infinitives
 
-For participles:
-- The `present` key contains a single string value
-- The `passe` key contains a dictionary with keys: `sm`, `sf`, `pm`, `pf`, `compound_sm`, `compound_sf`, `compound_pm`, `compound_pf`
+# Verbose output for debugging
+python crawler.py --verbose
+```
 
-All verb conjugations are in masculine forms. For impersonal verbs, only the third person singular
-and plural are conjugated, but the keys of other persons are still present, with values being `null`.
+## 📦 Output Files
 
-> [!note]
-> **Support for French Orthography Reform (rectification orthographique du français en 1990)**
-> 
-> Some verbs have multiple accepted spellings due to the 1990 orthography reform.
-> - If a verb infinitive has multiple forms (e.g., `connaître` vs `connaitre`), both appear as separate entries
-> - Each entry includes metadata:
->   - `rectification_1990`: Boolean indicating if the verb has a reformed variant
->   - `rectification_1990_variante`: The alternate spelling (e.g., `connaître` ↔ `connaitre`)
-> - Within conjugation forms, variants are separated by a semicolon (`;`)
->   - Example: `je vais; je vas` means both forms are accepted
+### JSON Files (`verbs.json` and `verbs.min.json`)
 
-### File `verbs.db`
+Two JSON files are generated:
+- **`verbs.json`** - Human-readable formatted conjugation data
+- **`verbs.min.json`** - Minified version for production use
 
-An SQLite3 database file containing the conjugation data of all verbs in a normalized relational schema.
+#### JSON Structure
+
+```json
+{
+  "aller": {
+    "h_aspire": false,
+    "rectification_1990": false,
+    "rectification_1990_variante": null,
+    "voix_active_etre": {
+      "participe": {
+        "present": "allant",
+        "passe": {
+          "sm": "allé",
+          "sf": "allée",
+          "pm": "allés",
+          "pf": "allées",
+          "compound_sm": "étant allé",
+          "compound_sf": "étant allée",
+          "compound_pm": "étant allés",
+          "compound_pf": "étant allées"
+        }
+      },
+      "indicatif": {
+        "present": {
+          "1s": "vais",
+          "2s": "vas",
+          "3sm": "va",
+          "3sf": "va",
+          "1p": "allons",
+          "2p": "allez",
+          "3pm": "vont",
+          "3pf": "vont"
+        },
+        "passe_compose": {
+          "1s": "suis allé",
+          "2s": "es allé",
+          "3sm": "est allé",
+          "3sf": "est allée",
+          "1p": "sommes allés",
+          "2p": "êtes allés",
+          "3pm": "sont allés",
+          "3pf": "sont allées"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Key Features
+
+**Voices** (voix):
+- `voix_active_avoir` - Active voice with auxiliary "avoir"
+- `voix_active_etre` - Active voice with auxiliary "être"
+- `voix_prono` - Reflexive/pronominal form
+
+**Moods** (modes):
+- `participe` - Participle (present and past)
+- `indicatif` - Indicative (8 tenses)
+- `subjonctif` - Subjunctive (4 tenses)
+- `conditionnel` - Conditional (2 tenses)
+- `imperatif` - Imperative (2 tenses)
+
+**Persons** (personnes):
+- `1s` - je (first person singular)
+- `2s` - tu (second person singular)
+- `3sm` - il (third person singular masculine)
+- `3sf` - elle (third person singular feminine)
+- `1p` - nous (first person plural)
+- `2p` - vous (second person plural)
+- `3pm` - ils (third person plural masculine)
+- `3pf` - elles (third person plural feminine)
+
+> [!IMPORTANT]
+> **Gender Agreement**: This dataset correctly captures gender differences in conjugations. For example, with verbs using "être" as auxiliary, `3sf` and `3pf` will differ from `3sm` and `3pm` when the past participle agrees in gender (e.g., "il est allé" vs "elle est allée").
+
+### SQLite3 Database (`verbs.db`)
+
+A normalized relational database with ~209 MB of conjugation data optimized for queries.
 
 #### Database Schema
 
-The database uses a normalized design with three main tables (all names in French with accents removed):
+**`verbes` table** - Core verb metadata (6,288 rows)
+```sql
+CREATE TABLE verbes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    infinitif TEXT UNIQUE NOT NULL,
+    h_aspire BOOLEAN NOT NULL,
+    rectification_1990 BOOLEAN NOT NULL,
+    rectification_1990_variante TEXT
+);
+```
 
-**`verbes` table** - Core verb metadata
-- `id` (INTEGER PRIMARY KEY) - Unique verb identifier
-- `infinitif` (TEXT UNIQUE NOT NULL) - The infinitive form of the verb
-- `h_aspire` (BOOLEAN) - Whether the verb begins with an "h aspiré"
-- `rectification_1990` (BOOLEAN) - Whether the verb has a 1990 reform variant
-- `rectification_1990_variante` (TEXT) - The alternate spelling (e.g., `connaître` ↔ `connaitre`)
+**`conjugaisons` table** - Person conjugations (978,010 rows)
+```sql
+CREATE TABLE conjugaisons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verbe_id INTEGER NOT NULL,
+    voix TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    temps TEXT NOT NULL,
+    personne TEXT NOT NULL,
+    conjugaison TEXT NOT NULL,
+    FOREIGN KEY (verbe_id) REFERENCES verbes(id) ON DELETE CASCADE,
+    UNIQUE(verbe_id, voix, mode, temps, personne)
+);
+```
 
-**`conjugaisons` table** - All person conjugations (normalized)
-- `id` (INTEGER PRIMARY KEY) - Unique conjugation identifier
-- `verbe_id` (INTEGER) - Foreign key to `verbes.id`
-- `voix` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
-- `mode` (TEXT) - Mood: `indicatif`, `subjonctif`, `conditionnel`, or `imperatif`
-- `temps` (TEXT) - Tense: `present`, `imparfait`, `passe_simple`, etc.
-- `personne` (TEXT) - Person: `1s`, `2s`, `3sm`, `3sf`, `1p`, `2p`, `3pm`, or `3pf`
-- `conjugaison` (TEXT) - The conjugated form
-- **Unique constraint:** `(verbe_id, voix, mode, temps, personne)`
+**`participes` table** - Participle forms (74,748 rows)
+```sql
+CREATE TABLE participes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    verbe_id INTEGER NOT NULL,
+    voix TEXT NOT NULL,
+    forme TEXT NOT NULL,
+    participe TEXT NOT NULL,
+    FOREIGN KEY (verbe_id) REFERENCES verbes(id) ON DELETE CASCADE,
+    UNIQUE(verbe_id, voix, forme)
+);
+```
 
-**`participes` table** - Participle forms
-- `id` (INTEGER PRIMARY KEY) - Unique participle identifier
-- `verbe_id` (INTEGER) - Foreign key to `verbes.id`
-- `voix` (TEXT) - Voice: `voix_active_avoir`, `voix_active_etre`, or `voix_prono`
-- `forme` (TEXT) - Form: `present`, `passe_sm`, `passe_sf`, `passe_pm`, `passe_pf`, `passe_compound_sm`, `passe_compound_sf`, `passe_compound_pm`, or `passe_compound_pf`
-- `participe` (TEXT) - The participle form
-- **Unique constraint:** `(verbe_id, voix, forme)`
+#### Optimized Indexes
 
-#### Indexes
-The database includes indexes on commonly queried fields for optimal performance:
-- `idx_verbes_infinitif` - Fast lookup by infinitive
-- `idx_verbes_variantes` - Fast lookup of reform variants
-- `idx_conjugaisons_recherche` - Fast lookup by verb, voice, mood, tense, person
-- `idx_conjugaisons_texte` - Fast search by conjugation text
-- `idx_participes_recherche` - Fast lookup of participle forms
+```sql
+CREATE INDEX idx_verbes_infinitif ON verbes(infinitif);
+CREATE INDEX idx_verbes_variantes ON verbes(rectification_1990_variante);
+CREATE INDEX idx_conjugaisons_recherche ON conjugaisons(verbe_id, voix, mode, temps, personne);
+CREATE INDEX idx_conjugaisons_texte ON conjugaisons(conjugaison);
+CREATE INDEX idx_participes_recherche ON participes(verbe_id, voix, forme);
+```
 
 #### Example Queries
 
 ```sql
--- Get all present indicative forms of "être" across all voices
-SELECT voix, personne, conjugaison
+-- Get all present indicative conjugations for "être"
+SELECT personne, conjugaison
 FROM conjugaisons c
 JOIN verbes v ON c.verbe_id = v.id
-WHERE v.infinitif = 'être' AND mode = 'indicatif' AND temps = 'present'
-ORDER BY voix, personne;
+WHERE v.infinitif = 'être' 
+  AND voix = 'voix_active_avoir'
+  AND mode = 'indicatif' 
+  AND temps = 'present'
+ORDER BY personne;
 
--- Find all verbs with 1990 reform variants
+-- Find verbs with 1990 orthography reform variants
 SELECT infinitif, rectification_1990_variante
 FROM verbes
-WHERE rectification_1990 = 1 AND rectification_1990_variante IS NOT NULL;
+WHERE rectification_1990 = 1;
 
--- Get all participles for a verb
+-- Search for all conjugations containing "aient"
+SELECT v.infinitif, c.voix, c.mode, c.temps, c.personne, c.conjugaison
+FROM conjugaisons c
+JOIN verbes v ON c.verbe_id = v.id
+WHERE c.conjugaison LIKE '%aient%'
+LIMIT 20;
+
+-- Get all participle forms for "aller"
 SELECT voix, forme, participe
 FROM participes p
 JOIN verbes v ON p.verbe_id = v.id
-WHERE v.infinitif = 'abaisser';
+WHERE v.infinitif = 'aller';
 
--- Find verbs where the conjugation contains a specific pattern
-SELECT DISTINCT v.infinitif
-FROM verbes v
-JOIN conjugaisons c ON v.id = c.verbe_id
-WHERE c.conjugaison LIKE '%aient%'
-LIMIT 10;
+-- Count conjugations by mood
+SELECT mode, COUNT(*) as total
+FROM conjugaisons
+GROUP BY mode
+ORDER BY total DESC;
 ```
 
-## Running the Script
+## 🛠️ Command Line Options
 
-```shell
-pip install -r requirements.txt    # Install dependencies
-python crawler.py [options]        # Run the crawler script
+### Basic Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--verbose`, `-v` | Enable detailed logging | `False` |
+| `--ignore-cache` | Force fresh data fetch (ignore cached HTML) | `False` |
+| `--gen-sqlite3` | Generate SQLite database file | `False` |
+| `--gen-infinitives` | Generate infinitives list only | `False` |
+
+### Performance Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--max-threads N` | Number of concurrent parsing threads | `4` |
+| `--max-retry N` | Maximum HTTP request retries | `5` |
+| `--requests-delay MS` | Delay between requests (milliseconds) | `500` |
+
+### Advanced Options
+
+| Option | Description |
+|--------|-------------|
+| `--user-agent AGENT` | Custom user agent string |
+| `--jsession-id ID` | Override JSESSION_ID cookie |
+
+### Examples
+
+```bash
+# Fast generation with 8 threads
+python crawler.py --max-threads 8 --gen-sqlite3
+
+# Conservative mode (slower, but safer for rate limiting)
+python crawler.py --max-threads 2 --requests-delay 1000
+
+# Debug mode with verbose output
+python crawler.py --verbose --max-threads 1
+
+# Generate fresh database ignoring cache
+python crawler.py --ignore-cache --gen-sqlite3 --max-threads 8
 ```
 
-### Command Line Options
+## 📋 Data Accuracy
 
-#### Overwrite Options
-- `-O:COOKIE-JSESSION-ID <JSESSION_ID>` - Overwrite the JSESSION_ID issued by the AF website when you visit the page.
-The script attempts to obtain it automatically, but you may overwrite it manually if needed.
-- `-O:USER-AGENT <USER_AGENT>` - Overwrite the user agent string used by the script.
+### Gender Agreement
+The parser correctly extracts gender-specific conjugations from the Académie française dictionary:
+- **Masculine/Feminine differences** are preserved when they exist
+- Example: "il est allé" (3sm) vs "elle est allée" (3sf)
+- Example: "ils sont allés" (3pm) vs "elles sont allées" (3pf)
 
-#### Configuration Options
-- `-C:IGNORE-CACHE` - Ignore the cached HTML files and always fetch the latest data from the AF website. False by default.
-- `-C:MAX-RETRY <n>` - Set the maximum number of retries if HTTP requests fail. Default is 3.
-- `-C:REQUESTS-DELAY <n>` - The delay between HTTP requests in ms. Default is 500 (half a second).
-Set this to a higher value if the server blocks your IP for too many requests.
-- `-C:VERBOSE` - Enable verbose output to see more details about the script's execution. False by default.
+### 1990 Orthography Reform
+Verbs with reformed spellings are tracked:
+- **Both variants** appear as separate entries (e.g., "connaître" and "connaitre")
+- **Metadata fields**: `rectification_1990` (boolean) and `rectification_1990_variante` (string)
+- **Alternative forms** within conjugations are separated by semicolons (e.g., "je vais; je vas")
 
-#### Extension Options
-- `-E:GEN-SQLITE3` - Generate an SQLite3 database file of the conjugation data (`verbs.db`). False by default.
-- `-E:GEN-INFINITIVES` - Generate a file of all verb infinitives (`./output/infinitives.txt`) from the AF dictionary. False by default.
-(_Using this extension will only generate the infinitives list, not the conjugation data._)
+## 🔧 Technical Details
 
-> [!note]
-> Running the script against the full list of verbs can take up to 8 hours.
-> You are suggested to run the script with a subset of verbs that you need, and use the
-> uploaded files in the [Releases](https://github.com/ShingZhanho/verbe-conjugaison-academie-francaise/releases)
-> section for the full list of verbs.
+### Requirements
+- **Python**: 3.13+ (tested on 3.13.3)
+- **Dependencies**: BeautifulSoup4 (lxml), requests
+- **Platform**: Cross-platform (Windows, macOS, Linux)
+
+### Architecture
+- **Parser**: `conjugation_parser.py` - Extracts conjugations from HTML tables
+- **Crawler**: `crawler.py` - Multi-threaded orchestration with progress tracking
+- **Database**: `extensions/db.py` - SQLite3 generation with normalized schema
+- **CLI**: `cli.py` - Modern argparse-based command-line interface
+
+### Caching
+HTML pages are cached in `./output/cache/` to avoid redundant HTTP requests:
+- Cache is used by default unless `--ignore-cache` is specified
+- Each verb has two cached files: `.html` (raw) and `.txt` (parsed)
+- Cache significantly speeds up subsequent runs
+
+## 🔗 Related Resources
+
+- [Académie française Dictionary](https://dictionnaire-academie.fr/)
+- [French Orthography Reform (1990)](https://www.academie-francaise.fr/questions-de-langue#5_strong-em-les-rectifications-de-lorthographe-em-strong)
+
+---
+
+**Last Updated**: November 2025  
+**Dataset Version**: 6,288 verbs from the 9th edition
