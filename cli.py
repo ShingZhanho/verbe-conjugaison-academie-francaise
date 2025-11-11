@@ -66,6 +66,14 @@ Examples:
         help=f'delay between HTTP requests in milliseconds (default: {gl.CONFIG_REQUESTS_DELAY})'
     )
     config_group.add_argument(
+        '--max-threads',
+        dest='max_threads',
+        type=int,
+        metavar='N',
+        default=gl.CONFIG_MAX_THREADS,
+        help=f'maximum number of concurrent threads for parsing (default: {gl.CONFIG_MAX_THREADS})'
+    )
+    config_group.add_argument(
         '-v', '--verbose',
         dest='verbose',
         action='store_true',
@@ -111,6 +119,10 @@ def apply_arguments(args: argparse.Namespace) -> None:
     if args.requests_delay < 0:
         raise ValueError("Requests delay must be a non-negative integer")
     gl.CONFIG_REQUESTS_DELAY = args.requests_delay
+    
+    if args.max_threads < 1:
+        raise ValueError("Max threads must be at least 1")
+    gl.CONFIG_MAX_THREADS = args.max_threads
     
     gl.CONFIG_VERBOSE = args.verbose
     
