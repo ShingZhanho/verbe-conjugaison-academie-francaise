@@ -4,16 +4,15 @@ Created on: 2025-11-11
 """
 
 import argparse
-from typing import Namespace
 import global_vars as gl
 
 
-def parse_arguments() -> Namespace:
+def parse_arguments() -> argparse.Namespace:
     """
     Parse command-line arguments using argparse.
     
     Returns:
-        Namespace: Parsed arguments
+        argparse.Namespace: Parsed arguments
     """
     parser = argparse.ArgumentParser(
         prog='crawler.py',
@@ -91,7 +90,7 @@ Examples:
     return parser.parse_args()
 
 
-def apply_arguments(args: Namespace) -> None:
+def apply_arguments(args: argparse.Namespace) -> None:
     """
     Apply parsed arguments to global variables.
     

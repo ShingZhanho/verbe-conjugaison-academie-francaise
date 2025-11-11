@@ -123,8 +123,8 @@ def main():
         return
 
     # Count and process verbs
-    total_verbs = file_utils.count_lines(const.INFINITIVE_FILE)
-    infinitives = file_utils.read_infinitives_file(const.INFINITIVE_FILE)
+    total_verbs = file_utils.count_lines(const.FILE_INFINITIVES)
+    infinitives = file_utils.read_infinitives_file(const.FILE_INFINITIVES)
     
     verbs_counter = 0
     prev_id = None
@@ -137,11 +137,11 @@ def main():
     
     # Merge all partial JSON files
     log.info("Merging all parsed entries...")
-    min_data = file_utils.merge_parsed_files(const.OUTPUT_FILE_MIN)
-    log.info(f"Writing to {const.OUTPUT_FILE_MIN}")
+    min_data = file_utils.merge_parsed_files(const.FILE_VERBS_MIN_JSON)
+    log.info(f"Writing to {const.FILE_VERBS_MIN_JSON}")
     
-    log.info(f"Writing to {const.OUTPUT_FILE}")
-    file_utils.write_formatted_json(min_data, const.OUTPUT_FILE)
+    log.info(f"Writing to {const.FILE_VERBS_JSON}")
+    file_utils.write_formatted_json(min_data, const.FILE_VERBS_JSON)
 
     # == GENERATE SQLITE3 DATABASE IF REQUIRED ==
     if gl.EXTENSION_GEN_SQLITE3:
