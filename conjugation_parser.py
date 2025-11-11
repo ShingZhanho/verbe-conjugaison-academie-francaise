@@ -231,16 +231,27 @@ def __parse_imperative_table(table_rows_tags) -> dict:
         "tu": None, "nous": None, "vous": None,
     }
     for index, row in enumerate(table_rows_tags):
+        # For pronominal imperative passé, the structure is different
+        # The "conj_refl-pron" actually contains the auxiliary verb with reflexive pronoun
         reflexive_pronoun_tag = row.find("td", class_="conj_refl-pron")
-        reflexive_pronoun = (reflexive_pronoun_tag.text.strip() + " ") if reflexive_pronoun_tag else ""
-
+        
         auxiliary_verb_tag = row.find("td", class_="conj_auxil")
-        auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
+        
+        # If reflexive_pronoun_tag exists but no auxiliary_verb_tag,
+        # it means the reflexive_pronoun_tag contains both (e.g., "sois-toi")
+        if reflexive_pronoun_tag and not auxiliary_verb_tag:
+            full_text = reflexive_pronoun_tag.text.strip()
+            # This is the combined auxiliary + reflexive pronoun
+            auxiliary_verb = full_text + " "
+        elif auxiliary_verb_tag:
+            auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
+        else:
+            auxiliary_verb = ""
 
         conjugated_verb_tag = str(list(row.find("td", class_="conj_verb").stripped_strings)[0])
         conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
         conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
 
         key = "tu" if index == 0 else "nous" if index == 1 else "vous"
-        result[key] = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb}"
+        result[key] = f"{auxiliary_verb}{conjugated_verb}"
     return result
