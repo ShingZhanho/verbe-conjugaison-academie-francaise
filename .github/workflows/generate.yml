@@ -8,19 +8,57 @@ on:
         type: boolean
         default: false
 
+      ignore-cache:
+        description: "Ignore cached HTML files and fetch fresh data"
+        required: false
+        type: boolean
+        default: false
+
       generate-sqlite3:
         description: "Generate SQLite3 database"
         required: false
         type: boolean
         default: true
 
+      generate-infinitives:
+        description: "Generate infinitives list from AF dictionary (skips conjugation data)"
+        required: false
+        type: boolean
+        default: false
+
+      max-threads:
+        description: "Maximum number of concurrent threads"
+        required: false
+        type: number
+        default: 4
+
+      max-retry:
+        description: "Maximum number of retries for HTTP requests"
+        required: false
+        type: number
+        default: 5
+
+      requests-delay:
+        description: "Delay between HTTP requests in milliseconds"
+        required: false
+        type: number
+        default: 500
+
+      user-agent:
+        description: "Custom user agent string (optional)"
+        required: false
+        type: string
+        default: ""
+
+      jsession-id:
+        description: "Custom JSESSION_ID cookie value (optional)"
+        required: false
+        type: string
+        default: ""
+
 jobs:
   generate_data:
     runs-on: ubuntu-22.04
-    env:
-      VERBOSE_LOGGING: ${{ inputs.verbose-logging}}
-      GENERATE_SQLITE3: ${{ inputs.generate-sqlite3 }}
-      ARGS: ""
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,11 +70,27 @@ jobs:
         run: pip install -r requirements.txt
       - name: Set up command line arguments
         run: |
-          if [[ "${VERBOSE_LOGGING}" == "true" ]]; then
-            ARGS="${ARGS} -C:VERBOSE"
+          ARGS=""
+          if [[ "${{ inputs.verbose-logging }}" == "true" ]]; then
+            ARGS="${ARGS} --verbose"
           fi
-          if [[ "${GENERATE_SQLITE3}" == "true" ]]; then
-            ARGS="${ARGS} -E:GEN-SQLITE3"
+          if [[ "${{ inputs.ignore-cache }}" == "true" ]]; then
+            ARGS="${ARGS} --ignore-cache"
+          fi
+          if [[ "${{ inputs.generate-sqlite3 }}" == "true" ]]; then
+            ARGS="${ARGS} --gen-sqlite3"
+          fi
+          if [[ "${{ inputs.generate-infinitives }}" == "true" ]]; then
+            ARGS="${ARGS} --gen-infinitives"
+          fi
+          ARGS="${ARGS} --max-threads ${{ inputs.max-threads }}"
+          ARGS="${ARGS} --max-retry ${{ inputs.max-retry }}"
+          ARGS="${ARGS} --requests-delay ${{ inputs.requests-delay }}"
+          if [[ -n "${{ inputs.user-agent }}" ]]; then
+            ARGS="${ARGS} --user-agent '${{ inputs.user-agent }}'"
+          fi
+          if [[ -n "${{ inputs.jsession-id }}" ]]; then
+            ARGS="${ARGS} --jsession-id '${{ inputs.jsession-id }}'"
           fi
           echo "ARGS=${ARGS}" >> $GITHUB_ENV
       - name: Run conjugation parser
