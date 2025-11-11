@@ -5,9 +5,11 @@ Updated on: 2025-11-11
 Created by: Jacob Shing
 """
 
+import re
 from bs4 import BeautifulSoup
 import conjugation_parser as conj
 import global_vars as gl
+import constants as const
 from http_client import DictionaryHTTPClient
 import json
 import log
@@ -62,7 +64,7 @@ def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
         bool: True if the parsing was successful, False otherwise.
     """
     try:  # read file and parse html
-        with open(f"./output/cache/{verb}.html", "r", encoding="utf-8") as f:
+        with open(f"{const.DIR_CACHE}/{verb}.html", "r", encoding="utf-8") as f:
             conj_page_soup = BeautifulSoup(f, "lxml")
         if (conj_page_root := conj_page_soup.find("div", id=verb_id)) is None:
             log.warning(f"Conjugation page for verb '{verb}' does not contain the expected div with ID '{verb_id}'.")
@@ -79,7 +81,7 @@ def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
 
     min_json = json.dumps(parsed, ensure_ascii=False, separators=(',', ':'), indent=None)
     min_json = min_json.replace("  ", " ").replace("'", "'")  # Replace double spaces and apostrophes
-    with open(f"./output/parsed/{verb}.txt", "w", encoding="utf-8") as out:
+    with open(f"{const.DIR_PARSED}/{verb}.txt", "w", encoding="utf-8") as out:
         out.write(min_json[1:-1])  # Remove the outer braces
     
     return True

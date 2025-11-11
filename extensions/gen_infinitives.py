@@ -10,6 +10,7 @@ import json
 import log
 import os
 import requests
+import constants as const
 
 def gen_infs_main():
     """
@@ -51,7 +52,8 @@ def gen_infs_main():
             inf_list = sorted(set(inf_list))  # Remove duplicates and sort
             log.info(f"Found {len(inf_list)} unique infinitives for alphabet '{alphabet_char.upper()}'")
 
-            with open("./output/gen_infs/infinitives.txt", "a", encoding="utf-8") as f:
+            gen_infs_output = f"{const.DIR_GEN_INFS}/infinitives.txt"
+            with open(gen_infs_output, "a", encoding="utf-8") as f:
                 for inf in inf_list:
                     f.write(f"{inf}\n")
         except Exception as e:

@@ -5,6 +5,7 @@ Created by: Jacob Shing
 """
 
 import log
+import constants as const
 
 def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | None:
     """
@@ -135,17 +136,7 @@ def __parse_mood_div(div_tag, is_imperatif: bool = False) -> dict:
 
     # Find all tenses tables within the mood
     tense_divs = div_tag.find_all("div", class_="tense")
-    tense_name_key_map = {
-        "présent": "present",
-        "passé": "passe",
-        "imparfait": "imparfait",
-        "passé composé": "passe_compose",
-        "plus-que-parfait": "plus_que_parfait",
-        "futur simple": "futur_simple",
-        "futur antérieur": "futur_anterieur",
-        "passé simple": "passe_simple",
-        "passé antérieur": "passe_anterieur",
-    }
+    tense_name_key_map = const.TENSE_NAME_MAP
     for tense_div in tense_divs:
         tense_name = tense_div.find("h4", class_="relation").text.strip().lower()
         tense_name_key = tense_name_key_map.get(tense_name, None)

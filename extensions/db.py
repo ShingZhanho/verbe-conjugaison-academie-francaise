@@ -8,12 +8,14 @@ import global_vars as gl
 import log
 import os
 import sqlite3
+import constants as const
 
 def generate_sqlite_db(loaded_json):
-    if os.path.exists("./output/verbs.db"):
-        os.remove("./output/verbs.db")
+    db_path = f"{const.DIR_OUTPUT}/verbs.db"
+    if os.path.exists(db_path):
+        os.remove(db_path)
 
-    conn = sqlite3.connect("./output/verbs.db")
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     # == CREATE TABLES ==
@@ -42,11 +44,7 @@ def generate_sqlite_db(loaded_json):
         cursor.execute(f"CREATE TABLE {voice} ({column_defs})")
 
     # == LOAD DATA INTO TABLES ==
-    voice_name_table_map = {
-        "voix_active_avoir": "ACTIVE_AVOIR",
-        "voix_active_etre": "ACTIVE_ETRE",
-        "voix_prono": "PRONOMINAL"
-    }
+    voice_name_table_map = const.VOICE_MAPPING
     for verb in loaded_json:
         verb_dict = loaded_json[verb]
         for voice in voice_name_table_map:

@@ -3,6 +3,7 @@ File and directory utilities for the crawler.
 Created on: 2025-11-11
 """
 
+import constants as const
 import json
 import os
 from typing import List, Optional
@@ -57,7 +58,7 @@ def read_cache_file(verb: str) -> Optional[str]:
     Returns:
         Cache content or None if not found
     """
-    cache_path = f"./output/cache/{verb}.txt"
+    cache_path = f"{const.DIR_CACHE}/{verb}{const.EXT_TXT}"
     if os.path.exists(cache_path):
         with open(cache_path, "r", encoding="utf-8") as f:
             return f.read().strip()
@@ -72,7 +73,7 @@ def write_cache_file(verb: str, content: str) -> None:
         verb: The verb infinitive
         content: Content to cache
     """
-    with open(f"./output/cache/{verb}.txt", "w", encoding="utf-8") as f:
+    with open(f"{const.DIR_CACHE}/{verb}{const.EXT_TXT}", "w", encoding="utf-8") as f:
         f.write(content)
 
 
@@ -88,11 +89,11 @@ def cache_exists(verb: str, cache_type: str = "txt") -> bool:
         True if cache exists
     """
     if cache_type == "txt":
-        return os.path.exists(f"./output/cache/{verb}.txt")
+        return os.path.exists(f"{const.DIR_CACHE}/{verb}{const.EXT_TXT}")
     elif cache_type == "html":
-        return os.path.exists(f"./output/cache/{verb}.html")
+        return os.path.exists(f"{const.DIR_CACHE}/{verb}{const.EXT_HTML}")
     elif cache_type == "parsed":
-        return os.path.exists(f"./output/parsed/{verb}.txt")
+        return os.path.exists(f"{const.DIR_PARSED}/{verb}{const.EXT_TXT}")
     return False
 
 
@@ -106,12 +107,12 @@ def merge_parsed_files(output_file: str) -> dict:
     Returns:
         Merged dictionary
     """
-    parsed_files = sorted([f for f in os.listdir("./output/parsed") if f.endswith(".txt")])
+    parsed_files = sorted([f for f in os.listdir(const.DIR_PARSED) if f.endswith(const.EXT_TXT)])
     
     with open(output_file, "w", encoding="utf-8") as out:
         out.write("{")
         for i, file in enumerate(parsed_files):
-            with open(f"./output/parsed/{file}", "r", encoding="utf-8") as f:
+            with open(f"{const.DIR_PARSED}/{file}", "r", encoding="utf-8") as f:
                 content = f.read().strip()
                 out.write(content)
                 if i < len(parsed_files) - 1:

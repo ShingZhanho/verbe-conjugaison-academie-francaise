@@ -6,6 +6,7 @@ Created by: Jacob Shing
 """
 
 import cli
+import constants as const
 import core
 import extensions.db as ext_db
 import extensions.gen_infinitives as ext_gen_infs
@@ -41,7 +42,7 @@ def process_verb(infinitive: str, verb_counter: int, total_verbs: int, prev_id: 
         log.verbose(f"Using cached result for infinitive '{infinitive}'.", gl.CONFIG_VERBOSE)
         content = file_utils.read_cache_file(infinitive)
         
-        if content in ("NOT_FOUND_SKIPPED", "PARSE_FAILED"):
+        if content in (const.CACHE_NOT_FOUND, const.CACHE_PARSE_FAILED):
             return False, prev_id
         
         verb_id, verb_nature = content.split("\n")
@@ -53,7 +54,7 @@ def process_verb(infinitive: str, verb_counter: int, total_verbs: int, prev_id: 
         
         if search_result is None:
             log.warning(f"Failed to find entry for infinitive '{infinitive}'. Skipping this verb.")
-            file_utils.write_cache_file(infinitive, "NOT_FOUND_SKIPPED")
+            file_utils.write_cache_file(infinitive, const.CACHE_NOT_FOUND)
             return False, prev_id
         
         verb_id, verb_nature = search_result
@@ -67,14 +68,14 @@ def process_verb(infinitive: str, verb_counter: int, total_verbs: int, prev_id: 
         prev_id = verb_id
         log.info(f"Downloading conjugation webpage for verb {infinitive} ({verb_id})...")
         if not core.download_conjugation(infinitive, verb_id, prev_id):
-            file_utils.write_cache_file(infinitive, "PARSE_FAILED")
+            file_utils.write_cache_file(infinitive, const.CACHE_PARSE_FAILED)
             return False, prev_id
     
     # Parse the HTML file
     parse_success = core.parse_conjugation_page(infinitive, verb_id, verb_nature)
     if not parse_success:
         log.error(f"Failed to parse conjugation page for verb '{infinitive}'. Manual entry may be required.")
-        file_utils.write_cache_file(infinitive, "PARSE_FAILED")
+        file_utils.write_cache_file(infinitive, const.CACHE_PARSE_FAILED)
         return False, prev_id
     
     return True, verb_id
@@ -109,12 +110,12 @@ def main():
     # Prepare output directories
     log.info("Preparing output directories...")
     out_dirs = [
-        "./output",
-        "./output/cache",
-        "./output/parsed",
+        const.DIR_OUTPUT,
+        const.DIR_CACHE,
+        const.DIR_PARSED,
     ]
     if gl.EXTENSION_GEN_INFINITIVES:
-        out_dirs.append("./output/gen_infs")
+        out_dirs.append(const.DIR_GEN_INFS)
     file_utils.ensure_directories(out_dirs)
 
     if gl.EXTENSION_GEN_INFINITIVES:
@@ -122,8 +123,8 @@ def main():
         return
 
     # Count and process verbs
-    total_verbs = file_utils.count_lines("./infinitives.txt")
-    infinitives = file_utils.read_infinitives_file("./infinitives.txt")
+    total_verbs = file_utils.count_lines(const.INFINITIVE_FILE)
+    infinitives = file_utils.read_infinitives_file(const.INFINITIVE_FILE)
     
     verbs_counter = 0
     prev_id = None
@@ -136,11 +137,11 @@ def main():
     
     # Merge all partial JSON files
     log.info("Merging all parsed entries...")
-    min_data = file_utils.merge_parsed_files("./output/verbs.min.json")
-    log.info("Writing to ./output/verbs.min.json")
+    min_data = file_utils.merge_parsed_files(const.OUTPUT_FILE_MIN)
+    log.info(f"Writing to {const.OUTPUT_FILE_MIN}")
     
-    log.info("Writing to ./output/verbs.json")
-    file_utils.write_formatted_json(min_data, "./output/verbs.json")
+    log.info(f"Writing to {const.OUTPUT_FILE}")
+    file_utils.write_formatted_json(min_data, const.OUTPUT_FILE)
 
     # == GENERATE SQLITE3 DATABASE IF REQUIRED ==
     if gl.EXTENSION_GEN_SQLITE3:
