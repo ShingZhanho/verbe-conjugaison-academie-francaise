@@ -14,6 +14,7 @@ from http_client import DictionaryHTTPClient
 import json
 import log
 from typing import Optional
+import data_transformer
 
 
 # Create a global HTTP client instance
@@ -79,10 +80,26 @@ def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
         log.warning(f"No conjugation data found for verb '{verb}'.")
         return False
 
-    min_json = json.dumps(parsed, ensure_ascii=False, separators=(',', ':'), indent=None)
+    # Transform the parsed data to new format
+    verb_data = parsed[verb]  # Extract verb data from {verb: {...}} structure
+    transformed = data_transformer.transform_verb_data(verb, verb_data)
+    
+    # Write the main entry
+    transformed_with_key = {verb: transformed}
+    min_json = json.dumps(transformed_with_key, ensure_ascii=False, separators=(',', ':'), indent=None)
     min_json = min_json.replace("  ", " ").replace("'", "'")  # Replace double spaces and apostrophes
     with open(f"{const.DIR_PARSED}/{verb}.txt", "w", encoding="utf-8") as out:
         out.write(min_json[1:-1])  # Remove the outer braces
+    
+    # Create reformed spelling entry if applicable
+    reformed_entry = data_transformer.create_reformed_verb_entry(verb, transformed)
+    if reformed_entry:
+        reformed_name, reformed_data = reformed_entry
+        reformed_with_key = {reformed_name: reformed_data}
+        min_json = json.dumps(reformed_with_key, ensure_ascii=False, separators=(',', ':'), indent=None)
+        min_json = min_json.replace("  ", " ").replace("'", "'")
+        with open(f"{const.DIR_PARSED}/{reformed_name}.txt", "w", encoding="utf-8") as out:
+            out.write(min_json[1:-1])
     
     return True
 
