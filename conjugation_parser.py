@@ -207,11 +207,12 @@ def __parse_tense_table(table_rows_tags) -> dict:
 
         conjugated_verb_tag = str(list(row.find("td", class_="conj_verb").stripped_strings)[0])
         conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
-        conjugated_verb = conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
+        # Split on comma first to get first form, then remove spaces within that form only
+        conjugated_verb = conjugated_verb.split(",")[0].replace(" ", "")
 
         rectified_conjugated_verb_tag = row.find("span", class_="forme_rectif")  # may have alternative (1990 orthographic reform)
         rectified_conjugated_verb = rectified_conjugated_verb_tag.text.strip() if rectified_conjugated_verb_tag else ""
-        rectified_conjugated_verb = rectified_conjugated_verb.replace(" ", "").split(",")[0]  # keep only the masculine form
+        rectified_conjugated_verb = rectified_conjugated_verb.split(",")[0].replace(" ", "")  # keep only the masculine form
 
         result[pronoun_key] = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb}"
         if rectified_conjugated_verb:
