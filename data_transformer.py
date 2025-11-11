@@ -149,6 +149,11 @@ def transform_tense(tense_data: dict, verb_name: str, mood: str, tense: str) -> 
     """
     result = {}
     
+    # Define the desired order of person keys
+    person_order = ['1s', '2s', '3sm', '3sf', '1p', '2p', '3pm', '3pf']
+    
+    # First pass: transform and store all conjugations
+    temp_data = {}
     for person_key, conjugation in tense_data.items():
         # Skip None values (some verbs don't have all persons)
         if conjugation is None:
@@ -160,13 +165,18 @@ def transform_tense(tense_data: dict, verb_name: str, mood: str, tense: str) -> 
         # Convert comma to semicolon (Académie uses comma for variants)
         transformed_conjugation = conjugation.replace(',', ';')
         
-        result[new_key] = transformed_conjugation
+        temp_data[new_key] = transformed_conjugation
     
     # Add elle and elles forms (same as il and ils)
-    if '3sm' in result:
-        result['3sf'] = result['3sm']
-    if '3pm' in result:
-        result['3pf'] = result['3pm']
+    if '3sm' in temp_data:
+        temp_data['3sf'] = temp_data['3sm']
+    if '3pm' in temp_data:
+        temp_data['3pf'] = temp_data['3pm']
+    
+    # Second pass: add keys in the desired order
+    for key in person_order:
+        if key in temp_data:
+            result[key] = temp_data[key]
     
     return result
 
