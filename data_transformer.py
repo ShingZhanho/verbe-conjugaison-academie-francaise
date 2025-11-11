@@ -16,9 +16,11 @@ PERSON_MAPPING = {
     'je': '1s',
     'tu': '2s',
     'il': '3sm',
+    'elle': '3sf',
     'nous': '1p',
     'vous': '2p',
-    'ils': '3pm'
+    'ils': '3pm',
+    'elles': '3pf'
 }
 
 def transform_verb_data(verb_name: str, verb_data: dict) -> dict:
@@ -166,12 +168,6 @@ def transform_tense(tense_data: dict, verb_name: str, mood: str, tense: str) -> 
         transformed_conjugation = conjugation.replace(',', ';')
         
         temp_data[new_key] = transformed_conjugation
-    
-    # Add elle and elles forms (same as il and ils)
-    if '3sm' in temp_data:
-        temp_data['3sf'] = temp_data['3sm']
-    if '3pm' in temp_data:
-        temp_data['3pf'] = temp_data['3pm']
     
     # Second pass: add keys in the desired order
     for key in person_order:

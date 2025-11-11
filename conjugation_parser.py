@@ -241,10 +241,12 @@ def __parse_tense_table(table_rows_tags) -> dict:
             return "je"
         elif "t" in pronoun:
             return "tu"
-        elif "ils" in pronoun or "elles" in pronoun:  # Keep only masculine form
-            return "ils"
-        elif "il" in pronoun or "elle" in pronoun or "on" in pronoun:    # Keep only masculine form
-            return "il"
+        elif "ils" in pronoun or "elles" in pronoun:
+            # Return tuple for third person plural to store both masculine and feminine
+            return ("ils", "elles")
+        elif "il" in pronoun or "elle" in pronoun or "on" in pronoun:
+            # Return tuple for third person singular to store both masculine and feminine
+            return ("il", "elle")
         elif "nous" in pronoun:
             return "nous"
         elif "vous" in pronoun:
@@ -268,18 +270,53 @@ def __parse_tense_table(table_rows_tags) -> dict:
         auxiliary_verb_tag = row.find("td", class_="conj_auxil")
         auxiliary_verb = (auxiliary_verb_tag.text + " ") if auxiliary_verb_tag else ""
 
-        conjugated_verb_tag = str(list(row.find("td", class_="conj_verb").stripped_strings)[0])
-        conjugated_verb = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
-        # Split on comma first to get first form, then remove spaces within that form only
-        conjugated_verb = conjugated_verb.split(",")[0].replace(" ", "")
+        conjugated_verb_tag_el = row.find("td", class_="conj_verb")
+        if conjugated_verb_tag_el is None:
+            continue  # Skip rows without verb conjugation
+            
+        conjugated_verb_tag = str(list(conjugated_verb_tag_el.stripped_strings)[0])
+        conjugated_verb_full = conjugated_verb_tag.strip() if conjugated_verb_tag else ""
+        
+        # Split on comma to separate masculine and feminine forms
+        verb_forms = [f.strip().replace(" ", "") for f in conjugated_verb_full.split(",")]
+        conjugated_verb_masc = verb_forms[0] if len(verb_forms) > 0 else ""
+        conjugated_verb_fem = verb_forms[1] if len(verb_forms) > 1 else conjugated_verb_masc  # Use feminine if exists, else masculine
+
 
         rectified_conjugated_verb_tag = row.find("span", class_="forme_rectif")  # may have alternative (1990 orthographic reform)
-        rectified_conjugated_verb = rectified_conjugated_verb_tag.text.strip() if rectified_conjugated_verb_tag else ""
-        rectified_conjugated_verb = rectified_conjugated_verb.split(",")[0].replace(" ", "")  # keep only the masculine form
+        if rectified_conjugated_verb_tag:
+            rectified_full = rectified_conjugated_verb_tag.text.strip()
+            rectified_forms = [f.strip().replace(" ", "") for f in rectified_full.split(",")]
+            rectified_conj_masc = rectified_forms[0] if len(rectified_forms) > 0 else ""
+            rectified_conj_fem = rectified_forms[1] if len(rectified_forms) > 1 else rectified_conj_masc
+        else:
+            rectified_conj_masc = ""
+            rectified_conj_fem = ""
 
-        result[pronoun_key] = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb}"
-        if rectified_conjugated_verb:
-            result[pronoun_key] =  f"{result[pronoun_key]},{reflexive_pronoun}{auxiliary_verb}{rectified_conjugated_verb}"
+        # Store masculine form (always)
+        masc_conjugation = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb_masc}"
+        if rectified_conj_masc:
+            masc_conjugation = f"{masc_conjugation},{reflexive_pronoun}{auxiliary_verb}{rectified_conj_masc}"
+        
+        # Handle tuple keys (third person) vs simple keys (first/second person)
+        if isinstance(pronoun_key, tuple):
+            # Third person: store masculine under first element of tuple
+            pronoun_key_masc = pronoun_key[0]
+            result[pronoun_key_masc] = masc_conjugation
+            
+            # Store feminine form if different
+            if conjugated_verb_fem != conjugated_verb_masc:
+                pronoun_key_fem = pronoun_key[1]
+                fem_conjugation = f"{reflexive_pronoun}{auxiliary_verb}{conjugated_verb_fem}"
+                if rectified_conj_fem and rectified_conj_fem != conjugated_verb_fem:
+                    fem_conjugation = f"{fem_conjugation},{reflexive_pronoun}{auxiliary_verb}{rectified_conj_fem}"
+                result[pronoun_key_fem] = fem_conjugation
+            else:
+                # If forms are identical, store under feminine key too
+                result[pronoun_key[1]] = masc_conjugation
+        else:
+            # First/second person: store under simple key
+            result[pronoun_key] = masc_conjugation
 
     return result
 
