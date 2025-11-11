@@ -135,7 +135,7 @@ def __parse_participle_div(div_tag) -> dict:
     Args:
         div_tag: The HTML element containing the participle div (`div#active_par` or `div#prono_par`).
     Returns:
-        dict: A dictionary containing the participle data with 'present' and 'passe' keys.
+        dict: A dictionary containing the participle data with 'present' (string) and 'passe' (dict) keys.
     """
     result = {}
     
@@ -149,28 +149,49 @@ def __parse_participle_div(div_tag) -> dict:
         
         tense_name = tense_header.get_text(strip=True).lower()
         
-        # Map French tense names to English keys
-        if tense_name == "présent":
-            tense_key = "present"
-        elif tense_name == "passé":
-            tense_key = "passe"
-        else:
-            continue
-        
         # Get all table rows with conjugation data
         conj_lines = tense_div.find_all("tr", class_="conj_line")
-        forms = []
         
-        for line in conj_lines:
-            # For participles, we just extract the verb form
-            verb_td = line.find("td", class_="conj_verb")
-            if verb_td:
-                verb_text = verb_td.get_text(strip=True)
-                if verb_text:
-                    forms.append(verb_text)
+        if tense_name == "présent":
+            # Present participle: extract single form as string
+            for line in conj_lines:
+                verb_td = line.find("td", class_="conj_verb")
+                if verb_td:
+                    verb_text = verb_td.get_text(strip=True)
+                    if verb_text:
+                        result["present"] = verb_text
+                        break  # Only one form for present participle
         
-        if forms:
-            result[tense_key] = forms
+        elif tense_name == "passé":
+            # Past participle: parse into key-value pairs
+            passe_data = {}
+            
+            # First line contains the four gender/number forms
+            if len(conj_lines) > 0:
+                first_line = conj_lines[0]
+                verb_td = first_line.find("td", class_="conj_verb")
+                if verb_td:
+                    verb_text = verb_td.get_text(strip=True)
+                    # Split by comma to get individual forms
+                    forms = [form.strip() for form in verb_text.split(',')]
+                    
+                    if len(forms) >= 4:
+                        passe_data["singulier_m"] = forms[0]
+                        passe_data["singulier_f"] = forms[1]
+                        passe_data["pluriel_m"] = forms[2]
+                        passe_data["pluriel_f"] = forms[3]
+            
+            # Second line contains the compound form with auxiliary
+            if len(conj_lines) > 1:
+                second_line = conj_lines[1]
+                verb_td = second_line.find("td", class_="conj_verb")
+                if verb_td:
+                    verb_text = verb_td.get_text(strip=True)
+                    if verb_text:
+                        passe_data["compose"] = verb_text
+            
+            if passe_data:
+                result["passe"] = passe_data
     
     return result
 

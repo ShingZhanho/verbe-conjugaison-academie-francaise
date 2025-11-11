@@ -31,10 +31,13 @@ begins with an "h aspiré". This value is boolean.
 
 Under each voice, at most five moods and all of their tenses are included:
 1. `participe` - participle
-    - `present` - present participle (e.g., "abaissant")
-    - `passe` - past participle forms: 
-      - Line 1: All four forms (masculine sing., feminine sing., masculine pl., feminine pl.) separated by commas
-      - Line 2: Compound form with auxiliary (e.g., "ayant abaissé")
+    - `present` - present participle as a string (e.g., "abaissant")
+    - `passe` - past participle with the following keys:
+      - `singulier_m` - masculine singular form
+      - `singulier_f` - feminine singular form
+      - `pluriel_m` - masculine plural form
+      - `pluriel_f` - feminine plural form
+      - `compose` - compound form with auxiliary (e.g., "ayant abaissé")
 2. `indicatif` - indicative mood
     - `present`
     - `imparfait`
@@ -66,7 +69,9 @@ Under each tense, six persons are provided (not applicable for participles):
 5. `vous` - second person plural
 6. `ils` - third person plural (masculine)
 
-For participles, the data structure is an array of strings rather than a dictionary keyed by person.
+For participles:
+- The `present` key contains a single string value
+- The `passe` key contains a dictionary with keys: `singulier_m`, `singulier_f`, `pluriel_m`, `pluriel_f`, and `compose`
 
 All verb conjugations are in masculine forms. For impersonal verbs, only the third person singular
 and plural are conjugated, but the keys of other persons are still present, with values being `null`.
