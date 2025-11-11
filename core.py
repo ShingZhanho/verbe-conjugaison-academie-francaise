@@ -96,7 +96,7 @@ def search_entry(verb: str, prev_entry_id: str | None = None) -> tuple[str, str]
             return None
         for entry in results_arr:
             entry_url = entry.get("url")
-            entry_label = entry.get("label").replace(" (s’)", "").replace(" (se)", "").replace(" (s')", "")
+            entry_label = entry.get("label").replace(" (s')", "").replace(" (se)", "")
             entry_nature = entry.get("nature")
             if "v." not in entry_nature:  # ensure the entry is a verb
                 continue
