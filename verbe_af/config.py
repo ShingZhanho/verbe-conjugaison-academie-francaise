@@ -45,6 +45,7 @@ class Config:
     # --- Behaviour ----------------------------------------------------------
     ignore_cache: bool = False
     verbose: bool = False
+    log_file: str | None = None
 
     # --- Extensions ---------------------------------------------------------
     gen_sqlite3: bool = False

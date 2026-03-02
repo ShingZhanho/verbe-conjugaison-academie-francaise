@@ -50,6 +50,8 @@ def _build_parser() -> argparse.ArgumentParser:
     cfg.add_argument("--max-threads", type=int, default=4, metavar="N",
                      help="worker threads (default: 4)")
     cfg.add_argument("-v", "--verbose", action="store_true", help="enable verbose output")
+    cfg.add_argument("--log-file", metavar="PATH", default=None,
+                     help="write log output to this file in addition to the terminal")
 
     ext = parser.add_argument_group("extensions")
     ext.add_argument("--gen-sqlite3", action="store_true", help="generate SQLite database")
@@ -80,6 +82,7 @@ def _build_config(ns: argparse.Namespace) -> Config:
         cfg.user_agent = ns.user_agent
     if ns.jsession_id:
         cfg.jsession_id = ns.jsession_id
+    cfg.log_file = ns.log_file
     return cfg
 
 
@@ -87,19 +90,16 @@ def _build_config(ns: argparse.Namespace) -> Config:
 # Logging setup
 # ---------------------------------------------------------------------------
 
-def _setup_logging(verbose: bool) -> None:
+def _setup_logging(verbose: bool, log_file: str | None = None) -> None:
     level = logging.DEBUG if verbose else logging.INFO
-    fmt = "\033[0m%(asctime)s [%(levelname)s] %(message)s"
+    fmt = "%(asctime)s [%(levelname)s] %(message)s"
     datefmt = "%Y-%m-%d %H:%M:%S"
 
     # Root logger
     root = logging.getLogger()
     root.setLevel(level)
 
-    # Console handler (coloured)
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setLevel(level)
-
+    # Console handler (coloured, stderr)
     class _ColouredFormatter(logging.Formatter):
         _COLOURS = {
             logging.WARNING: "\033[1;33m",
@@ -113,8 +113,17 @@ def _setup_logging(verbose: bool) -> None:
             record.msg = f"{colour}{record.msg}{self._RESET}"
             return super().format(record)
 
-    handler.setFormatter(_ColouredFormatter(fmt, datefmt=datefmt))
-    root.addHandler(handler)
+    console = logging.StreamHandler(sys.stderr)
+    console.setLevel(level)
+    console.setFormatter(_ColouredFormatter(fmt, datefmt=datefmt))
+    root.addHandler(console)
+
+    # Optional file handler (plain text, no ANSI codes)
+    if log_file:
+        fh = logging.FileHandler(log_file, encoding="utf-8")
+        fh.setLevel(level)
+        fh.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+        root.addHandler(fh)
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +140,7 @@ def main(argv: list[str] | None = None) -> None:
     except ConfigError as exc:
         parser.error(str(exc))
 
-    _setup_logging(cfg.verbose)
+    _setup_logging(cfg.verbose, cfg.log_file)
     logger.info("verbe_af %s — starting (args: %s)", __version__, " ".join(sys.argv[1:]))
 
     client = DictionaryClient(cfg)
