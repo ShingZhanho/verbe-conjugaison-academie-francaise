@@ -110,8 +110,9 @@ def _setup_logging(verbose: bool, log_file: str | None = None) -> None:
 
         def format(self, record: logging.LogRecord) -> str:
             colour = self._COLOURS.get(record.levelno, self._RESET)
-            record.msg = f"{colour}{record.msg}{self._RESET}"
-            return super().format(record)
+            copy = logging.makeLogRecord(record.__dict__)
+            copy.msg = f"{colour}{record.msg}{self._RESET}"
+            return super().format(copy)
 
     console = logging.StreamHandler(sys.stderr)
     console.setLevel(level)
