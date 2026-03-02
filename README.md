@@ -28,22 +28,22 @@ pip install -r requirements.txt
 
 ```bash
 # Generate JSON files (uses 4 threads by default)
-python crawler.py
+python -m verbe_af
 
 # Generate JSON + SQLite database
-python crawler.py --gen-sqlite3
+python -m verbe_af --gen-sqlite3
 
 # Generate with 8 threads for faster processing
-python crawler.py --max-threads 8
+python -m verbe_af --max-threads 8
 
 # Force fresh data (ignore cache)
-python crawler.py --ignore-cache
+python -m verbe_af --ignore-cache
 
 # Generate infinitives list only
-python crawler.py --gen-infinitives
+python -m verbe_af --gen-infinitives
 
 # Verbose output for debugging
-python crawler.py --verbose
+python -m verbe_af --verbose
 ```
 
 ## 📦 Output Files
@@ -108,6 +108,8 @@ Two JSON files are generated:
 **Voices** (voix):
 - `voix_active_avoir` - Active voice with auxiliary "avoir"
 - `voix_active_etre` - Active voice with auxiliary "être"
+- `voix_active` - Active voice (defective verbs with unknown auxiliary)
+- `voix_passive` - Passive voice
 - `voix_prono` - Reflexive/pronominal form
 
 **Moods** (modes):
@@ -253,16 +255,16 @@ ORDER BY total DESC;
 
 ```bash
 # Fast generation with 8 threads
-python crawler.py --max-threads 8 --gen-sqlite3
+python -m verbe_af --max-threads 8 --gen-sqlite3
 
 # Conservative mode (slower, but safer for rate limiting)
-python crawler.py --max-threads 2 --requests-delay 1000
+python -m verbe_af --max-threads 2 --requests-delay 1000
 
 # Debug mode with verbose output
-python crawler.py --verbose --max-threads 1
+python -m verbe_af --verbose --max-threads 1
 
 # Generate fresh database ignoring cache
-python crawler.py --ignore-cache --gen-sqlite3 --max-threads 8
+python -m verbe_af --ignore-cache --gen-sqlite3 --max-threads 8
 ```
 
 ## 📋 Data Accuracy
@@ -287,15 +289,27 @@ Verbs with reformed spellings are tracked:
 - **Platform**: Cross-platform (Windows, macOS, Linux)
 
 ### Architecture
-- **Parser**: `conjugation_parser.py` - Extracts conjugations from HTML tables
-- **Crawler**: `crawler.py` - Multi-threaded orchestration with progress tracking
-- **Database**: `extensions/db.py` - SQLite3 generation with normalized schema
-- **CLI**: `cli.py` - Modern argparse-based command-line interface
+
+The codebase is organised as a Python package (`verbe_af/`) with clean separation of concerns:
+
+| Module | Responsibility |
+|--------|---------------|
+| `verbe_af/cli.py` | argparse CLI and main dispatch |
+| `verbe_af/config.py` | Injectable `Config` dataclass (replaces mutable globals) |
+| `verbe_af/client.py` | `DictionaryClient` — `requests.Session`-based HTTP |
+| `verbe_af/parser.py` | Conjugation HTML → structured dict |
+| `verbe_af/transformer.py` | Normalise parsed data, 1990 reform handling |
+| `verbe_af/cache.py` | Cache & output file I/O, merge |
+| `verbe_af/crawler.py` | `VerbCrawler` — threaded orchestration |
+| `verbe_af/constants.py` | Immutable constants & `VoiceType` enum |
+| `verbe_af/exceptions.py` | `CrawlerError` hierarchy |
+| `verbe_af/extensions/` | Optional generators (infinitives, SQLite) |
 
 ### Caching
 HTML pages are cached in `./output/cache/` to avoid redundant HTTP requests:
 - Cache is used by default unless `--ignore-cache` is specified
-- Each verb has two cached files: `.html` (raw) and `.txt` (parsed)
+- Each verb has a `.html` cache (raw div fragment) and a `.txt` parsed output
+- Full-page HTML caches are automatically shrunk to div-only on first parse
 - Cache significantly speeds up subsequent runs
 
 ## 🔗 Related Resources
