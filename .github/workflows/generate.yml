@@ -94,7 +94,7 @@ jobs:
           fi
           echo "ARGS=${ARGS}" >> $GITHUB_ENV
       - name: Run conjugation parser
-        run: python crawler.py ${ARGS}
+        run: python -m verbe_af ${ARGS}
       - name: Upload generated JSON files
         uses: actions/upload-artifact@v4
         with:
