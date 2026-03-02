@@ -32,6 +32,8 @@ PRONOUNS_IMPERATIVE = ["tu", "nous", "vous"]
 VOICE_MAPPING = {
     "voix_active_avoir": "ACTIVE_AVOIR",
     "voix_active_etre": "ACTIVE_ETRE",
+    "voix_active": "ACTIVE",
+    "voix_passive": "PASSIVE",
     "voix_prono": "PRONOMINAL"
 }
 

@@ -33,10 +33,13 @@ def parse_conjugation_table(root_tag, verb: str) -> dict | None:
             # Auxiliary unknown but voice has parseable mood data (defective verbs)
             voix_active_unknown = voix_active
 
+    # Look for div.voix_passive for passive voice
+    voix_passive = root_tag.find("div", id="voix_passive")
+
     # Look for div.voix_pron for reflexive verbs
     voix_pron = root_tag.find("div", id="voix_prono")
 
-    if voix_active_avoir is None and voix_active_etre is None and voix_active_unknown is None and voix_pron is None:
+    if voix_active_avoir is None and voix_active_etre is None and voix_active_unknown is None and voix_passive is None and voix_pron is None:
         log.warning(f"No conjugation data found for verb '{verb}'. Skipping parsing.")
         return None
 
@@ -50,6 +53,9 @@ def parse_conjugation_table(root_tag, verb: str) -> dict | None:
     if voix_active_unknown is not None:
         log.info(f"Parsing active voice (auxiliary unknown, defective verb)...")
         result[verb]["voix_active"] = __parse_conjugation_div(voix_active_unknown, 1)
+    if voix_passive is not None:
+        log.info(f"Parsing passive voice...")
+        result[verb]["voix_passive"] = __parse_conjugation_div(voix_passive, 3)
     if voix_pron is not None:
         log.info(f"Parsing reflexive voice...")
         result[verb]["voix_prono"] = __parse_conjugation_div(voix_pron, 2)
@@ -94,22 +100,25 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
     (Internal) Parses a conjugation div tag and extracts the conjugation data for each tense.
     Args:
         div_tag: The HTML element containing the div (`div.voix_active_être`, `div.voix_active_avoir`, etc.).
-        type (int): The type of voice (`1` for active (avoir/être), `2` for reflexive (pron)).
+        type (int): The type of voice (`1` for active (avoir/être), `2` for reflexive (pron), `3` for passive).
     Returns:
         dict: A dictionary containing the conjugation data for each tense.
     """
     result = {}
 
+    # Determine mood ID prefix based on voice type
+    mood_prefix = {1: 'active', 2: 'prono', 3: 'passive'}[type]
+
     # Find all moods within the div
-    participe_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_par")
-    indicatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_ind")
-    subjonctif_div      = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_sub")
-    conditionnel_div    = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_con")
-    imperatif_div       = div_tag.find("div", id=f"{'active' if type == 1 else 'prono'}_imp")
+    participe_div       = div_tag.find("div", id=f"{mood_prefix}_par")
+    indicatif_div       = div_tag.find("div", id=f"{mood_prefix}_ind")
+    subjonctif_div      = div_tag.find("div", id=f"{mood_prefix}_sub")
+    conditionnel_div    = div_tag.find("div", id=f"{mood_prefix}_con")
+    imperatif_div       = div_tag.find("div", id=f"{mood_prefix}_imp")
 
     if participe_div is not None:
         log.info(f"    Parsing participle mood...")
-        result["participe"] = __parse_participle_div(participe_div)
+        result["participe"] = __parse_participle_div(participe_div, type)
     else:
         log.warning(f"    The verb does not seem to contain a participle mood.")
     if indicatif_div is not None:
@@ -135,11 +144,12 @@ def __parse_conjugation_div(div_tag, type: int) -> dict:
 
     return result
 
-def __parse_participle_div(div_tag) -> dict:
+def __parse_participle_div(div_tag, voice_type: int = 1) -> dict:
     """
     (Internal) Parses a participle div tag and extracts the participle forms.
     Args:
-        div_tag: The HTML element containing the participle div (`div#active_par` or `div#prono_par`).
+        div_tag: The HTML element containing the participle div (`div#active_par`, `div#prono_par`, or `div#passive_par`).
+        voice_type (int): The voice type (`1` for active, `2` for reflexive, `3` for passive).
     Returns:
         dict: A dictionary containing the participle data with 'present' (string) and 'passe' (dict) keys.
     """
@@ -172,29 +182,46 @@ def __parse_participle_div(div_tag) -> dict:
             # Past participle: parse into key-value pairs
             passe_data = {}
             
-            # First line contains the four gender/number forms
-            if len(conj_lines) > 0:
-                first_line = conj_lines[0]
-                verb_td = first_line.find("td", class_="conj_verb")
-                if verb_td:
-                    verb_text = verb_td.get_text(strip=True)
-                    # Split by comma to get individual forms
-                    forms = [form.strip() for form in verb_text.split(',')]
-                    
-                    if len(forms) >= 4:
-                        passe_data["singulier_m"] = forms[0]
-                        passe_data["singulier_f"] = forms[1]
-                        passe_data["pluriel_m"] = forms[2]
-                        passe_data["pluriel_f"] = forms[3]
-            
-            # Second line contains the compound form with auxiliary
-            if len(conj_lines) > 1:
-                second_line = conj_lines[1]
-                verb_td = second_line.find("td", class_="conj_verb")
-                if verb_td:
-                    verb_text = verb_td.get_text(strip=True)
-                    if verb_text:
-                        passe_data["compose"] = verb_text
+            if voice_type == 3:  # Passive voice
+                # Passive passé has only 1 row with compound form: "ayant été aimé, aimée, aimés, aimées"
+                if len(conj_lines) > 0:
+                    verb_td = conj_lines[0].find("td", class_="conj_verb")
+                    if verb_td:
+                        verb_text = verb_td.get_text(strip=True)
+                        forms = [form.strip() for form in verb_text.split(',')]
+                        if len(forms) >= 4:
+                            # Extract auxiliary from first form (e.g., "ayant été aimé" → aux="ayant été", form="aimé")
+                            first_parts = forms[0].split()
+                            aux = ' '.join(first_parts[:-1])
+                            passe_data["singulier_m"] = first_parts[-1]
+                            passe_data["singulier_f"] = forms[1]
+                            passe_data["pluriel_m"] = forms[2]
+                            passe_data["pluriel_f"] = forms[3]
+                            passe_data["compose"] = verb_text
+            else:
+                # Active/pronominal: first line has simple forms, second line has compound
+                if len(conj_lines) > 0:
+                    first_line = conj_lines[0]
+                    verb_td = first_line.find("td", class_="conj_verb")
+                    if verb_td:
+                        verb_text = verb_td.get_text(strip=True)
+                        # Split by comma to get individual forms
+                        forms = [form.strip() for form in verb_text.split(',')]
+                        
+                        if len(forms) >= 4:
+                            passe_data["singulier_m"] = forms[0]
+                            passe_data["singulier_f"] = forms[1]
+                            passe_data["pluriel_m"] = forms[2]
+                            passe_data["pluriel_f"] = forms[3]
+                
+                # Second line contains the compound form with auxiliary
+                if len(conj_lines) > 1:
+                    second_line = conj_lines[1]
+                    verb_td = second_line.find("td", class_="conj_verb")
+                    if verb_td:
+                        verb_text = verb_td.get_text(strip=True)
+                        if verb_text:
+                            passe_data["compose"] = verb_text
             
             if passe_data:
                 result["passe"] = passe_data
