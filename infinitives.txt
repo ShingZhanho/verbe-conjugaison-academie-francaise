@@ -56,7 +56,6 @@ accourir:A9A0306
 accoutrer:A9A0309
 accoutumer:A9A0312
 accrocher:A9A0322
-accroire:A9A0324
 accroupir:A9A0328
 accroître:A9A0327
 accréditer:A9A0315
@@ -364,7 +363,6 @@ assaillir:A9A2802
 assainir:A9A2803
 assaisonner:A9A2807
 assassiner:A9A2810
-assavoir:A9A2812
 assembler:A9A2819
 asseoir:A9A2823
 assermenter:A9A2825
@@ -535,7 +533,6 @@ biaiser:A9B0979
 biberonner:A9B0985
 bichonner:A9B1011
 bidonner:A9B1028
-bienvenir:A9B1056
 biffer:A9B1064
 bifurquer:A9B1071
 bigarrer:A9B1079
@@ -798,7 +795,6 @@ capeyer:A9C0602
 capitaliser:A9C0617
 capitonner:A9C0628
 capituler:A9C0640
-caponner:A9C0644
 caporaliser:A9C0647
 capoter:A9C0655
 capsuler:A9C0673
@@ -1256,7 +1252,6 @@ courber:A9C4616
 courcailler:A9C4619
 courir:A9C4628
 couronner:A9C4636
-courre:A9C4638
 courroucer:A9C4642
 courser:A9C4647
 court-circuiter:A9C4661
@@ -1811,7 +1806,7 @@ déjanter:A9D0973
 déjauger:A9D0974
 déjeter:A9D0977
 déjeuner:A9D0979
-déjouer:A9D0980
+déjouer:A8D0613
 déjucher:A9D0981
 déjuger:A9D0982
 délabrer:A9D0987
@@ -2579,7 +2574,7 @@ envoiler:A9E2054
 envoler:A9E2060
 envoyer:A9E2066
 envoûter:A9E2063
-ergoter:A9E2473
+ergoter:A8E1616
 errer:A9E2507
 esbigner:A9E2535
 esbroufer:A9E2537
@@ -2613,7 +2608,6 @@ essouffler:A9E2686
 essuyer:A9E2693
 estamper:A9E2704
 estampiller:A9E2709
-ester:A9E2713
 estimer:A9E2733
 estiver:A9E2739
 estocader:A9E2744
@@ -3052,7 +3046,6 @@ feuler:A9F0620
 feutrer:A9F0625
 fiancer:A9F0640
 ficeler:A9F0663
-fiche:A9F0669
 ficher:A9F0671
 fienter:A9F0703
 fier:A9F0705
@@ -3120,7 +3113,6 @@ forer:A9F1243
 forfaire:A9F1250
 forger:A9F1262
 forhuer:A9F1266
-forhuir:A9F1266*
 forjeter:A9F1268
 forlancer:A9F1269
 forligner:A9F1271
@@ -3216,7 +3208,6 @@ fédérer:A9F0400
 féer:A9F0402
 féliciter:A9F0418
 féminiser:A9F0433
-férir:A9F0482
 fêler:A9F0412
 fêter:A9F0579
 gabarier:A9G0005
@@ -4116,7 +4107,6 @@ noyer:A9N0766
 nuancer:A9N0774
 nuer:A9N0799
 nuire:A9N0800
-nul:A9N0806
 numériser:A9N0819
 numéroter:A9N0824
 nécessiter:A9N0190
@@ -4674,7 +4664,6 @@ quintupler:A9Q0289
 quittancer:A9Q0302
 quitter:A9Q0304
 quémander:A9Q0173
-quérir:A9Q0187
 quêter:A9Q0200
 rabaisser:A9R0010
 rabaner:A9R0013
@@ -4812,7 +4801,6 @@ ravir:A9R0653
 raviser:A9R0655
 ravitailler:A9R0660
 raviver:A9R0663
-ravoir:A9R0664
 rayer:A9R0667
 rayonner:A9R0679
 razzier:A9R0684
@@ -5739,7 +5727,6 @@ supposer:A9S3479
 supprimer:A9S3485
 suppurer:A9S3489
 supputer:A9S3491
-sur-aller:A9S3525
 surabonder:A9S3516
 surajouter:A9S3521
 suralimenter:A9S3524

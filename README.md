@@ -1,17 +1,17 @@
 # verbe-conjugaison-académie-française
 
-A comprehensive dataset of **6,288 French verbs** with complete conjugation data extracted from the [Académie française's official dictionary](https://dictionnaire-academie.fr/). This repository includes both the parsed conjugation data and the Python scripts used to generate it.
+A comprehensive dataset of **6,000+ French verbs** with complete conjugation data extracted from the [Académie française's official dictionary](https://dictionnaire-academie.fr/). This repository includes both the parsed conjugation data and the Python scripts used to generate it.
 
-## 📊 Dataset Overview
+## Dataset Overview
 
-- **6,288 verbs** from the 9th edition of the Académie française dictionary
+- **6,000+ verbs** from the 9th edition of the Académie française dictionary
 - **Complete conjugation tables** across all moods, tenses, and persons
 - **Gender-aware conjugations** - Separate forms for masculine/feminine when they differ
 - **Three output formats**: JSON (formatted), JSON (minified), and SQLite3 database
 - **Multi-threaded parser** for efficient data generation
 - **1990 orthography reform support** with variant tracking
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -46,7 +46,7 @@ python -m verbe_af --gen-infinitives
 python -m verbe_af --verbose
 ```
 
-## 📦 Output Files
+## Output Files
 
 ### JSON Files (`verbs.json` and `verbs.min.json`)
 
@@ -138,7 +138,7 @@ A normalized relational database with ~209 MB of conjugation data optimized for 
 
 #### Database Schema
 
-**`verbes` table** - Core verb metadata (6,288 rows)
+**`verbes` table** - Core verb metadata
 ```sql
 CREATE TABLE verbes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,7 +149,7 @@ CREATE TABLE verbes (
 );
 ```
 
-**`conjugaisons` table** - Person conjugations (978,010 rows)
+**`conjugaisons` table** - Person conjugations
 ```sql
 CREATE TABLE conjugaisons (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -164,7 +164,7 @@ CREATE TABLE conjugaisons (
 );
 ```
 
-**`participes` table** - Participle forms (74,748 rows)
+**`participes` table** - Participle forms
 ```sql
 CREATE TABLE participes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -225,7 +225,7 @@ GROUP BY mode
 ORDER BY total DESC;
 ```
 
-## 🛠️ Command Line Options
+## Command Line Options
 
 ### Basic Options
 
@@ -267,7 +267,7 @@ python -m verbe_af --verbose --max-threads 1
 python -m verbe_af --ignore-cache --gen-sqlite3 --max-threads 8
 ```
 
-## 📋 Data Accuracy
+## Data Accuracy
 
 ### Gender Agreement
 The parser correctly extracts gender-specific conjugations from the Académie française dictionary:
@@ -284,7 +284,7 @@ Verbs with reformed spellings are tracked:
 ## 🔧 Technical Details
 
 ### Requirements
-- **Python**: 3.13+ (tested on 3.13.3)
+- **Python**: 3.13+ (tested on 3.13.3, lower versions may work)
 - **Dependencies**: BeautifulSoup4 (lxml), requests
 - **Platform**: Cross-platform (Windows, macOS, Linux)
 
@@ -312,12 +312,7 @@ HTML pages are cached in `./output/cache/` to avoid redundant HTTP requests:
 - Full-page HTML caches are automatically shrunk to div-only on first parse
 - Cache significantly speeds up subsequent runs
 
-## 🔗 Related Resources
+## Related Resources
 
 - [Académie française Dictionary](https://dictionnaire-academie.fr/)
 - [French Orthography Reform (1990)](https://www.academie-francaise.fr/questions-de-langue#5_strong-em-les-rectifications-de-lorthographe-em-strong)
-
----
-
-**Last Updated**: November 2025  
-**Dataset Version**: 6,288 verbs from the 9th edition
