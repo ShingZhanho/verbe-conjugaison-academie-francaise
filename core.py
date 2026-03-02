@@ -68,9 +68,15 @@ def parse_conjugation_page(verb: str, verb_id: str) -> bool:
         with open(cache_path, "r", encoding="utf-8") as f:
             raw_html = f.read()
         conj_page_soup = BeautifulSoup(raw_html, "lxml")
-        if (conj_page_root := conj_page_soup.find("div", id=verb_id)) is None:
-            log.warning(f"Conjugation page for verb '{verb}' does not contain the expected div with ID '{verb_id}'.")
-            return False
+        conj_page_root = conj_page_soup.find("div", id=verb_id)
+        if conj_page_root is None:
+            # Fallback: try to find any div whose ID starts with "A9" (handles homonym ID mismatches)
+            conj_page_root = conj_page_soup.find("div", id=lambda x: x and x.startswith("A9"))
+            if conj_page_root is not None:
+                log.info(f"Verb '{verb}': expected div#{verb_id}, found div#{conj_page_root['id']} instead. Using fallback.")
+            else:
+                log.warning(f"Conjugation page for verb '{verb}' does not contain any conjugation div.")
+                return False
         
         # If the cached file contains a full HTML page, shrink it to div-only
         stripped = raw_html.lstrip()

@@ -20,6 +20,7 @@ def parse_conjugation_table(root_tag, verb: str) -> dict | None:
 
     voix_active_avoir = root_tag.find("div", id="voix_active_avoir")
     voix_active_etre = root_tag.find("div", id="voix_active_être")
+    voix_active_unknown = None  # For defective verbs where auxiliary cannot be determined
     # Look for div.voix_active_être / div.voix_active_avoir / div.voix_active
     # If only div.voix_active is present, try to determine the auxiliary from the table content
     if voix_active_avoir is None and voix_active_etre is None:
@@ -28,11 +29,14 @@ def parse_conjugation_table(root_tag, verb: str) -> dict | None:
             voix_active_avoir = voix_active
         elif guessed_aux == 2:  # Être
             voix_active_etre = voix_active
+        elif voix_active is not None and voix_active.find("div", id=lambda x: x and x.startswith("active_")):
+            # Auxiliary unknown but voice has parseable mood data (defective verbs)
+            voix_active_unknown = voix_active
 
     # Look for div.voix_pron for reflexive verbs
     voix_pron = root_tag.find("div", id="voix_prono")
 
-    if voix_active_avoir is None and voix_active_etre is None and voix_pron is None:
+    if voix_active_avoir is None and voix_active_etre is None and voix_active_unknown is None and voix_pron is None:
         log.warning(f"No conjugation data found for verb '{verb}'. Skipping parsing.")
         return None
 
@@ -43,6 +47,9 @@ def parse_conjugation_table(root_tag, verb: str) -> dict | None:
     if voix_active_etre is not None:
         log.info(f"Parsing active voice with auxiliary 'être'...")
         result[verb]["voix_active_etre"] = __parse_conjugation_div(voix_active_etre, 1)
+    if voix_active_unknown is not None:
+        log.info(f"Parsing active voice (auxiliary unknown, defective verb)...")
+        result[verb]["voix_active"] = __parse_conjugation_div(voix_active_unknown, 1)
     if voix_pron is not None:
         log.info(f"Parsing reflexive voice...")
         result[verb]["voix_prono"] = __parse_conjugation_div(voix_pron, 2)
