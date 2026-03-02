@@ -160,6 +160,7 @@ class DictionaryHTTPClient:
     def download_conjugation(self, verb: str, verb_id: str, prev_id: Optional[str] = None) -> bool:
         """
         Download the conjugation webpage for a verb.
+        Only saves the div#<verb_id> and its children to the cache file.
         
         Args:
             verb: The infinitive form of the verb
@@ -181,8 +182,16 @@ class DictionaryHTTPClient:
             response = requests.get(url, headers=headers, timeout=30)
             response.raise_for_status()
             
+            # Extract only the div#<verb_id> and save to cache
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(response.text, "lxml")
+            verb_div = soup.find("div", id=verb_id)
+            if verb_div is None:
+                log.warning(f"Could not find div#{verb_id} in downloaded page for verb '{verb}'.")
+                return False
+            
             with open(f"./output/cache/{verb}.html", "w", encoding="utf-8") as out:
-                out.write(response.text)
+                out.write(str(verb_div))
             
             return True
             

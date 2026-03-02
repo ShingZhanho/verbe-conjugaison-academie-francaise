@@ -64,11 +64,20 @@ def parse_conjugation_page(verb: str, verb_id: str) -> bool:
         bool: True if the parsing was successful, False otherwise.
     """
     try:  # read file and parse html
-        with open(f"{const.DIR_CACHE}/{verb}.html", "r", encoding="utf-8") as f:
-            conj_page_soup = BeautifulSoup(f, "lxml")
+        cache_path = f"{const.DIR_CACHE}/{verb}.html"
+        with open(cache_path, "r", encoding="utf-8") as f:
+            raw_html = f.read()
+        conj_page_soup = BeautifulSoup(raw_html, "lxml")
         if (conj_page_root := conj_page_soup.find("div", id=verb_id)) is None:
             log.warning(f"Conjugation page for verb '{verb}' does not contain the expected div with ID '{verb_id}'.")
             return False
+        
+        # If the cached file contains a full HTML page, shrink it to div-only
+        stripped = raw_html.lstrip()
+        if stripped.startswith("<!DOCTYPE") or stripped.startswith("<html"):
+            log.info(f"Shrinking cached HTML for verb '{verb}' (removing non-essential tags)...")
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(str(conj_page_root))
     except Exception as e:
         log.warning(f"An error occurred while reading the conjugation page for verb '{verb}': {e}.")
         return False
