@@ -20,18 +20,31 @@ def ensure_directories(directories: List[str]) -> None:
         os.makedirs(directory, exist_ok=True)
 
 
-def read_infinitives_file(filepath: str) -> List[str]:
+def read_infinitives_file(filepath: str) -> List[tuple[str, Optional[str]]]:
     """
     Read infinitives from a file.
+    Supports two formats:
+      - '<verb>:<verb_id>' (new format with pre-resolved verb ID)
+      - '<verb>' (legacy format, verb ID will be resolved via search)
     
     Args:
         filepath: Path to the infinitives file
         
     Returns:
-        List of verb infinitives
+        List of (verb, verb_id_or_None) tuples
     """
+    result = []
     with open(filepath, "r", encoding="utf-8") as f:
-        return [line.strip() for line in f if line.strip()]
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if ':' in line:
+                verb, verb_id = line.split(':', 1)
+                result.append((verb.strip(), verb_id.strip()))
+            else:
+                result.append((line, None))
+    return result
 
 
 def count_lines(filepath: str) -> int:
@@ -48,49 +61,21 @@ def count_lines(filepath: str) -> int:
         return sum(1 for _ in f)
 
 
-def read_cache_file(verb: str) -> Optional[str]:
-    """
-    Read cached search result for a verb.
-    
-    Args:
-        verb: The verb infinitive
-        
-    Returns:
-        Cache content or None if not found
-    """
-    cache_path = f"{const.DIR_CACHE}/{verb}{const.EXT_TXT}"
-    if os.path.exists(cache_path):
-        with open(cache_path, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    return None
 
 
-def write_cache_file(verb: str, content: str) -> None:
-    """
-    Write search result to cache.
-    
-    Args:
-        verb: The verb infinitive
-        content: Content to cache
-    """
-    with open(f"{const.DIR_CACHE}/{verb}{const.EXT_TXT}", "w", encoding="utf-8") as f:
-        f.write(content)
 
-
-def cache_exists(verb: str, cache_type: str = "txt") -> bool:
+def cache_exists(verb: str, cache_type: str = "html") -> bool:
     """
     Check if a cache file exists for a verb.
     
     Args:
         verb: The verb infinitive
-        cache_type: Type of cache ('txt', 'html', 'parsed')
+        cache_type: Type of cache ('html', 'parsed')
         
     Returns:
         True if cache exists
     """
-    if cache_type == "txt":
-        return os.path.exists(f"{const.DIR_CACHE}/{verb}{const.EXT_TXT}")
-    elif cache_type == "html":
+    if cache_type == "html":
         return os.path.exists(f"{const.DIR_CACHE}/{verb}{const.EXT_HTML}")
     elif cache_type == "parsed":
         return os.path.exists(f"{const.DIR_PARSED}/{verb}{const.EXT_TXT}")

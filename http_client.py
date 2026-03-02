@@ -95,7 +95,7 @@ class DictionaryHTTPClient:
             log.fatal(f"An error occurred while obtaining JSESSION_ID: {e}")
             return None
     
-    def search_entry(self, verb: str, prev_entry_id: Optional[str] = None) -> Optional[tuple[str, str]]:
+    def search_entry(self, verb: str, prev_entry_id: Optional[str] = None) -> Optional[str]:
         """
         Search for a verb entry in the dictionary.
         
@@ -104,7 +104,7 @@ class DictionaryHTTPClient:
             prev_entry_id: Optional previous entry ID
             
         Returns:
-            Tuple of (entry_id, verb_nature) or None if not found
+            The entry ID string or None if not found
         """
         headers = self._get_headers(
             referer=f"{gl.URL_ROOT}article/{prev_entry_id}" if prev_entry_id else None,
@@ -133,7 +133,7 @@ class DictionaryHTTPClient:
                 
                 for entry in results_arr:
                     entry_url = entry.get("url")
-                    entry_label = entry.get("label", "").replace(" (s')", "").replace(" (se)", "")
+                    entry_label = entry.get("label", "").replace("\u2019", "'").replace(" (s')", "").replace(" (se)", "")
                     entry_nature = entry.get("nature", "")
                     
                     if "v." not in entry_nature:
@@ -141,7 +141,7 @@ class DictionaryHTTPClient:
                     
                     if entry_label == verb:
                         entry_id = entry_url.split("/")[-1]
-                        return entry_id, entry_nature
+                        return entry_id
                 
                 log.warning(f"Failed to find an exact match for verb '{verb}'.")
                 return None

@@ -7,13 +7,12 @@ Created by: Jacob Shing
 import log
 import constants as const
 
-def parse_conjugation_table(root_tag, verb: str, verb_nature: str) -> dict | None:
+def parse_conjugation_table(root_tag, verb: str) -> dict | None:
     """
     Parses the conjugation table from the HTML element.
     Args:
         root_tag: The HTML element of div#verb-id containing the conjugation data.
         verb (str): The verb being conjugated.
-        verb_nature (str): The nature of the verb returned from dictionary search.
     Returns:
         dict: A dictionary containing the parsed conjugation data. None if no conjugation data is found.
     """

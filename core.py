@@ -30,14 +30,14 @@ def obtain_jsession_id() -> Optional[str]:
     return _http_client.obtain_jsession_id()
 
 
-def search_entry(verb: str, prev_entry_id: Optional[str] = None) -> Optional[tuple[str, str]]:
+def search_entry(verb: str, prev_entry_id: Optional[str] = None) -> Optional[str]:
     """
     Searches for the entry of a verb in the dictionary.
     Args:
         verb (str): The verb to search for.
         prev_entry_id (str, optional): The previous entry ID to continue from. Defaults to None.
     Returns:
-        tuple[str, str] | None: A tuple containing the entry ID and the verb's nature, or None if not found.
+        str | None: The entry ID, or None if not found.
     """
     return _http_client.search_entry(verb, prev_entry_id)
 
@@ -54,13 +54,12 @@ def download_conjugation(verb: str, verb_id: str, prev_id: Optional[str] = None)
     """
     return _http_client.download_conjugation(verb, verb_id, prev_id)
 
-def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
+def parse_conjugation_page(verb: str, verb_id: str) -> bool:
     """
     Parses the conjugation webpage for a given verb and extracts the conjugation data.
     Args:
         verb (str): The infinitive form of the verb.
         verb_id (str): The ID of the verb entry in the dictionary.
-        verb_nature (str): The verb nature information returned from dictionary search.
     Returns:
         bool: True if the parsing was successful, False otherwise.
     """
@@ -74,7 +73,7 @@ def parse_conjugation_page(verb: str, verb_id: str, verb_nature: str) -> bool:
         log.warning(f"An error occurred while reading the conjugation page for verb '{verb}': {e}.")
         return False
     
-    parsed = conj.parse_conjugation_table(conj_page_root, verb, verb_nature)
+    parsed = conj.parse_conjugation_table(conj_page_root, verb)
 
     if parsed is None:
         log.warning(f"No conjugation data found for verb '{verb}'.")

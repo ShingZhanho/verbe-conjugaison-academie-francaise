@@ -22,7 +22,7 @@ progress_lock = threading.Lock()
 processed_counter = 0
 
 
-def process_verb(infinitive: str, verb_counter: int, total_verbs: int, prev_id: str = None) -> tuple[bool, str]:
+def process_verb(infinitive: str, verb_counter: int, total_verbs: int, verb_id: str = None) -> tuple[bool, str]:
     """
     Process a single verb: search, download, and parse.
     
@@ -30,10 +30,10 @@ def process_verb(infinitive: str, verb_counter: int, total_verbs: int, prev_id: 
         infinitive: The verb infinitive
         verb_counter: Current verb number
         total_verbs: Total number of verbs
-        prev_id: Previous entry ID (Note: ignored in multi-threaded mode)
+        verb_id: Pre-resolved verb ID from infinitives list (or None to search)
         
     Returns:
-        Tuple of (success, new_prev_id)
+        Tuple of (success, verb_id)
     """
     global processed_counter
     
@@ -49,46 +49,34 @@ def process_verb(infinitive: str, verb_counter: int, total_verbs: int, prev_id: 
     # Check if already parsed
     if not gl.CONFIG_IGNORE_CACHE and file_utils.cache_exists(infinitive, "parsed"):
         log.verbose(f"Verb '{infinitive}' already parsed. Skipping.", gl.CONFIG_VERBOSE)
-        return True, prev_id
+        return True, verb_id
     
-    # Check cached search result
-    if not gl.CONFIG_IGNORE_CACHE and file_utils.cache_exists(infinitive, "txt"):
-        log.verbose(f"Using cached result for infinitive '{infinitive}'.", gl.CONFIG_VERBOSE)
-        content = file_utils.read_cache_file(infinitive)
-        
-        if content in (const.CACHE_NOT_FOUND, const.CACHE_PARSE_FAILED):
-            return False, prev_id
-        
-        verb_id, verb_nature = content.split("\n")
-        log.info(f"Cached verb ID: {verb_id}, Nature: {verb_nature}.")
-    else:
-        # Search for the verb
+    # If verb_id not pre-resolved, search for it
+    if verb_id is None:
         log.info(f"({current_count:>{width}}/{total_verbs}) Processing: {infinitive}")
-        search_result = core.search_entry(infinitive, None)  # prev_id not used in threaded mode
+        search_result = core.search_entry(infinitive, None)
         
         if search_result is None:
             log.warning(f"Failed to find entry for infinitive '{infinitive}'. Skipping this verb.")
-            file_utils.write_cache_file(infinitive, const.CACHE_NOT_FOUND)
-            return False, prev_id
+            return False, None
         
-        verb_id, verb_nature = search_result
-        log.info(f"Found verb ID: {verb_id}, Nature: {verb_nature} for infinitive '{infinitive}'.")
-        file_utils.write_cache_file(infinitive, f"{verb_id}\n{verb_nature}")
+        verb_id = search_result
+        log.info(f"Found verb ID: {verb_id} for infinitive '{infinitive}'.")
+    else:
+        log.info(f"({current_count:>{width}}/{total_verbs}) Processing: {infinitive} (pre-resolved ID: {verb_id})")
     
     # Download conjugation webpage
     if not gl.CONFIG_IGNORE_CACHE and file_utils.cache_exists(infinitive, "html"):
         log.info(f"Using cached conjugation webpage for infinitive '{infinitive}'. Skipping download.")
     else:
         log.info(f"Downloading conjugation webpage for verb {infinitive} ({verb_id})...")
-        if not core.download_conjugation(infinitive, verb_id, None):  # prev_id not used in threaded mode
-            file_utils.write_cache_file(infinitive, const.CACHE_PARSE_FAILED)
+        if not core.download_conjugation(infinitive, verb_id, None):
             return False, verb_id
     
     # Parse the HTML file
-    parse_success = core.parse_conjugation_page(infinitive, verb_id, verb_nature)
+    parse_success = core.parse_conjugation_page(infinitive, verb_id)
     if not parse_success:
         log.error(f"Failed to parse conjugation page for verb '{infinitive}'. Manual entry may be required.")
-        file_utils.write_cache_file(infinitive, const.CACHE_PARSE_FAILED)
         return False, verb_id
     
     return True, verb_id
@@ -99,13 +87,13 @@ def process_verb_wrapper(args):
     Wrapper for process_verb to work with ThreadPoolExecutor.map().
     
     Args:
-        args: Tuple of (infinitive, verb_counter, total_verbs)
+        args: Tuple of (infinitive, verb_counter, total_verbs, verb_id)
         
     Returns:
         Tuple of (infinitive, success, verb_id)
     """
-    infinitive, verb_counter, total_verbs = args
-    success, verb_id = process_verb(infinitive, verb_counter, total_verbs)
+    infinitive, verb_counter, total_verbs, verb_id = args
+    success, verb_id = process_verb(infinitive, verb_counter, total_verbs, verb_id)
     return (infinitive, success, verb_id)
 
 def main():
@@ -159,8 +147,8 @@ def main():
     global processed_counter
     processed_counter = 0
     
-    # Prepare arguments for each verb
-    verb_args = [(inf, i + 1, total_verbs) for i, inf in enumerate(infinitives)]
+    # Prepare arguments for each verb: (infinitive, counter, total, verb_id)
+    verb_args = [(verb, i + 1, total_verbs, verb_id) for i, (verb, verb_id) in enumerate(infinitives)]
     
     # Process verbs with thread pool
     success_count = 0

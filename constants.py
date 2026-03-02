@@ -3,10 +3,6 @@ Constants for the verb conjugation crawler.
 Created on: 2025-11-11
 """
 
-# Cache status constants
-CACHE_NOT_FOUND = "NOT_FOUND_SKIPPED"
-CACHE_PARSE_FAILED = "PARSE_FAILED"
-
 # Directory paths
 DIR_OUTPUT = "./output"
 DIR_CACHE = "./output/cache"
