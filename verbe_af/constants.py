@@ -59,20 +59,24 @@ TENSE_NAME_MAP: dict[str, str] = {
     "passé antérieur": "passe_anterieur",
 }
 
-# Person pronoun → compact output key
-PERSON_KEY_MAP: dict[str, str] = {
-    "je": "1s",
-    "tu": "2s",
-    "il": "3sm",
-    "elle": "3sf",
-    "nous": "1p",
-    "vous": "2p",
-    "ils": "3pm",
-    "elles": "3pf",
+# Person pronoun → output keys.  Non-gendered pronouns expand to both m/f;
+# 3rd-person pronouns map to a single gendered key.
+PERSON_EXPAND_MAP: dict[str, tuple[str, ...]] = {
+    "je":    ("1sm", "1sf"),
+    "tu":    ("2sm", "2sf"),
+    "il":    ("3sm",),
+    "elle":  ("3sf",),
+    "nous":  ("1pm", "1pf"),
+    "vous":  ("2pm", "2pf"),
+    "ils":   ("3pm",),
+    "elles": ("3pf",),
 }
 
-# Ordered list of person keys for deterministic output
-PERSON_ORDER: list[str] = ["1s", "2s", "3sm", "3sf", "1p", "2p", "3pm", "3pf"]
+# Ordered list of all 12 person keys for deterministic output
+PERSON_ORDER: list[str] = [
+    "1sm", "1sf", "2sm", "2sf", "3sm", "3sf",
+    "1pm", "1pf", "2pm", "2pf", "3pm", "3pf",
+]
 
 # Auxiliary verb look-up tables
 AVOIR_FORMS = frozenset(["ai", "as", "a", "avons", "avez", "ont"])

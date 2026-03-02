@@ -140,8 +140,9 @@ def _transform_tense(tense_data: dict) -> dict:
     for person, conj in tense_data.items():
         if conj is None:
             continue
-        new_key = C.PERSON_KEY_MAP.get(person, person)
-        temp[new_key] = conj.replace(",", ";")
+        value = conj.replace(",", ";")
+        for out_key in C.PERSON_EXPAND_MAP.get(person, (person,)):
+            temp[out_key] = value
 
     return {k: temp[k] for k in C.PERSON_ORDER if k in temp}
 

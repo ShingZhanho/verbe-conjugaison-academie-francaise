@@ -119,18 +119,18 @@ Two JSON files are generated:
 - `conditionnel` - Conditional (2 tenses)
 - `imperatif` - Imperative (2 tenses)
 
-**Persons** (personnes):
-- `1s` - je (first person singular)
-- `2s` - tu (second person singular)
+**Persons** (personnes) — full `{1,2,3} × {s,p} × {m,f}` grid:
+- `1sm` / `1sf` - je (first person singular masculine / feminine)
+- `2sm` / `2sf` - tu (second person singular masculine / feminine)
 - `3sm` - il (third person singular masculine)
 - `3sf` - elle (third person singular feminine)
-- `1p` - nous (first person plural)
-- `2p` - vous (second person plural)
+- `1pm` / `1pf` - nous (first person plural masculine / feminine)
+- `2pm` / `2pf` - vous (second person plural masculine / feminine)
 - `3pm` - ils (third person plural masculine)
 - `3pf` - elles (third person plural feminine)
 
-> [!IMPORTANT]
-> **Gender Agreement**: This dataset correctly captures gender differences in conjugations. For example, with verbs using "être" as auxiliary, `3sf` and `3pf` will differ from `3sm` and `3pm` when the past participle agrees in gender (e.g., "il est allé" vs "elle est allée").
+> [!NOTE]
+> For non-third-person forms (je, tu, nous, vous), the conjugation does not vary with gender — the same form appears under both the masculine and feminine key. Third-person keys (`3sm`/`3sf`, `3pm`/`3pf`) may differ when the past participle agrees in gender (e.g., *il est allé* vs *elle est allée*). Impersonal verbs like *falloir* only have third-person masculine entries.
 
 ### SQLite3 Database (`verbs.db`)
 

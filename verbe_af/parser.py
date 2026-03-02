@@ -22,17 +22,31 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _map_pronoun(pronoun: str) -> str | tuple[str, str] | None:
-    """Map a raw pronoun string to a dict key (or a masc/fem tuple for 3rd person)."""
+    """Map a raw pronoun string to a dict key (or a masc/fem tuple for 3rd person).
+
+    Third-person pronouns are returned as a ``(masc, fem)`` tuple **only**
+    when both genders appear in the text (e.g. ``"il, elle "``).  When only
+    one gender is present (e.g. impersonal ``"il "`` in *falloir*), a plain
+    string is returned so that only the matching key is populated.
+    """
     p = pronoun.strip().lower()
     if "j" in p:
         return "je"
     if "t" in p:
         return "tu"
-    # Order matters: test "ils"/"elles" before "il"/"elle"
-    if "ils" in p or "elles" in p:
+    # Order matters: test plural before singular
+    if "ils" in p and "elles" in p:
         return ("ils", "elles")
-    if "il" in p or "elle" in p or "on" in p:
+    if "ils" in p:
+        return "ils"
+    if "elles" in p:
+        return "elles"
+    if "il" in p and "elle" in p:
         return ("il", "elle")
+    if "il" in p or "on" in p:
+        return "il"
+    if "elle" in p:
+        return "elle"
     if "nous" in p:
         return "nous"
     if "vous" in p:
