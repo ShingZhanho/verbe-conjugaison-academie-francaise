@@ -7,9 +7,7 @@ A comprehensive dataset of **6,298 French verbs** with complete conjugation data
 - **6,298 verbs** from the 9th edition of the Académie française dictionary
 - **Complete conjugation tables** across all moods, tenses, and persons
 - **Gender-aware conjugations** — separate masculine/feminine forms for all persons when they differ (passive voice, être auxiliaries, pronominal compounds)
-- **Compact merged keys** — identical conjugation forms within a tense share a single key (e.g. `"1sm;1sf"` instead of two separate entries)
 - **Three output formats**: JSON (formatted), JSON (minified), and SQLite3 database
-- **SSD-friendly caching** — parsed data stored in a single SQLite WAL-mode database instead of thousands of fragment files
 - **Multi-threaded parser** for efficient data generation
 - **1990 orthography reform support** with variant tracking
 
@@ -140,9 +138,6 @@ Two JSON files are generated:
 - Simple tenses (no participle agreement): `"1sm;1sf"`, `"2sm;2sf"`, `"3sm;3sf"`, `"1pm;1pf"`, `"2pm;2pf"`, `"3pm;3pf"` — 6 keys
 - Compound tenses with être (participle agrees in gender): all 12 keys separate
 - Passive voice simple tenses: keys merge across persons with the same auxiliary and participle form (e.g. `"1sm;2sm"` when both use *étais combiné*)
-
-> [!NOTE]
-> Gender agreement is correctly applied for **all persons** (not just 3rd person) whenever the conjugation includes a past participle that agrees in gender — this includes passive voice, active voice with être auxiliary, and pronominal compound tenses. Impersonal verbs like *falloir* only have third-person masculine entries.
 
 ### SQLite3 Database (`verbs.db`)
 
@@ -294,12 +289,11 @@ The parser correctly extracts gender-specific conjugations from the Académie fr
 Verbs with reformed spellings are tracked:
 - **Both variants** appear as separate entries (e.g., "connaître" and "connaitre")
 - **Metadata fields**: `rectification_1990` (boolean) and `rectification_1990_variante` (string)
-- **Alternative forms** within conjugations are separated by semicolons (e.g., "je vais; je vas")
 
 ## 🔧 Technical Details
 
 ### Requirements
-- **Python**: 3.13+ (tested on 3.14.2, lower versions may work)
+- **Python**: 3.13+ (tested, lower versions may work)
 - **Dependencies**: BeautifulSoup4 (lxml), requests
 - **Platform**: Cross-platform (Windows, macOS, Linux)
 
@@ -319,21 +313,6 @@ The codebase is organised as a Python package (`verbe_af/`) with clean separatio
 | `verbe_af/constants.py` | Immutable constants, `VoiceType` enum, person key maps |
 | `verbe_af/exceptions.py` | `CrawlerError` hierarchy |
 | `verbe_af/extensions/` | Optional generators (infinitives, SQLite) |
-
-### Caching
-Two layers of caching minimise network and CPU work:
-
-**HTML cache** (`./output/cache/*.html`):
-- One file per verb containing the raw conjugation div fragment
-- Full-page HTML caches are automatically shrunk to div-only on first parse
-- Skipped when `--ignore-cache` is specified
-
-**Parsed store** (`./output/parsed.db`):
-- Single SQLite WAL-mode database replacing thousands of fragment files
-- Stores each verb's fully-parsed and transformed JSON keyed by infinitive
-- Thread-safe via per-thread connections (`threading.local()`)
-- Dramatically reduces SSD write amplification compared to individual files
-- Cleared automatically when `--ignore-cache` is specified
 
 ## Related Resources
 
