@@ -322,17 +322,27 @@ def _parse_tense_rows(rows: list[Tag]) -> dict:
         if rf_masc:
             masc_conj += f",{refl}{aux}{rf_masc}"
 
-        if isinstance(key, tuple):
-            result[key[0]] = masc_conj
-            if fem != masc:
-                fem_conj = f"{refl}{aux}{fem}"
-                if rf_fem and rf_fem != fem:
-                    fem_conj += f",{refl}{aux}{rf_fem}"
-                result[key[1]] = fem_conj
-            else:
-                result[key[1]] = masc_conj
+        # Build feminine conjugation when the verb form differs by gender
+        if fem != masc:
+            fem_conj = f"{refl}{aux}{fem}"
+            if rf_fem and rf_fem != fem:
+                fem_conj += f",{refl}{aux}{rf_fem}"
         else:
-            result[key] = masc_conj
+            fem_conj = masc_conj
+
+        if isinstance(key, tuple):
+            # 3rd person — separate il/elle or ils/elles keys
+            result[key[0]] = masc_conj
+            result[key[1]] = fem_conj
+        else:
+            # 1st / 2nd person
+            if fem != masc:
+                # Gender matters — store under gendered keys
+                result[key] = None          # clear ungendered slot
+                result[key + "_m"] = masc_conj
+                result[key + "_f"] = fem_conj
+            else:
+                result[key] = masc_conj
 
     return result
 

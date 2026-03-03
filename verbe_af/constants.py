@@ -62,14 +62,25 @@ TENSE_NAME_MAP: dict[str, str] = {
 # Person pronoun → output keys.  Non-gendered pronouns expand to both m/f;
 # 3rd-person pronouns map to a single gendered key.
 PERSON_EXPAND_MAP: dict[str, tuple[str, ...]] = {
-    "je":    ("1sm", "1sf"),
-    "tu":    ("2sm", "2sf"),
-    "il":    ("3sm",),
-    "elle":  ("3sf",),
-    "nous":  ("1pm", "1pf"),
-    "vous":  ("2pm", "2pf"),
-    "ils":   ("3pm",),
-    "elles": ("3pf",),
+    # Ungendered — expand to both m/f with the same value
+    "je":      ("1sm", "1sf"),
+    "tu":      ("2sm", "2sf"),
+    "nous":    ("1pm", "1pf"),
+    "vous":    ("2pm", "2pf"),
+    # Gendered — used when masculine and feminine forms differ
+    "je_m":    ("1sm",),
+    "je_f":    ("1sf",),
+    "tu_m":    ("2sm",),
+    "tu_f":    ("2sf",),
+    "nous_m":  ("1pm",),
+    "nous_f":  ("1pf",),
+    "vous_m":  ("2pm",),
+    "vous_f":  ("2pf",),
+    # 3rd person — always single-gender
+    "il":      ("3sm",),
+    "elle":    ("3sf",),
+    "ils":     ("3pm",),
+    "elles":   ("3pf",),
 }
 
 # Ordered list of all 12 person keys for deterministic output
