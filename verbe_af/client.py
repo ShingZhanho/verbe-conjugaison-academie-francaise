@@ -10,7 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from verbe_af import constants as C
-from verbe_af.cache import cache_path
+from verbe_af.cache import html_cache_path
 from verbe_af.config import Config
 from verbe_af.exceptions import NetworkError
 
@@ -162,7 +162,7 @@ class DictionaryClient:
             logger.warning("div#%s not found in downloaded page for '%s'", verb_id, verb)
             return False
 
-        out = cache_path(verb, "html")
+        out = html_cache_path(verb)
         with open(out, "w", encoding="utf-8") as fh:
             fh.write(str(verb_div))
         return True

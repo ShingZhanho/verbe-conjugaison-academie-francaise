@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sqlite3
+import threading
 from pathlib import Path
 
 from verbe_af import constants as C
@@ -57,66 +59,115 @@ def count_lines(filepath: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Cache queries
+# HTML cache queries
 # ---------------------------------------------------------------------------
 
-def cache_path(verb: str, kind: str = "html") -> str:
-    """Return the canonical cache path for *verb*.
+def html_cache_path(verb: str) -> str:
+    """Return the canonical HTML cache path for *verb*."""
+    return os.path.join(C.DIR_CACHE, f"{verb}.html")
 
-    *kind* is ``"html"`` (raw cache) or ``"parsed"`` (transformed JSON fragment).
+
+def html_cache_exists(verb: str) -> bool:
+    """Check whether an HTML cache file exists for *verb*."""
+    return os.path.exists(html_cache_path(verb))
+
+
+# ---------------------------------------------------------------------------
+# Parsed-data store (SQLite key-value)
+# ---------------------------------------------------------------------------
+
+class ParsedStore:
+    """Thread-safe SQLite key-value store for parsed verb JSON.
+
+    Replaces the thousands of tiny ``output/parsed/<verb>.txt`` fragment
+    files with a single ``output/parsed.db`` database using WAL mode for
+    efficient concurrent writes.
     """
-    if kind == "html":
-        return os.path.join(C.DIR_CACHE, f"{verb}.html")
-    if kind == "parsed":
-        return os.path.join(C.DIR_PARSED, f"{verb}.txt")
-    raise ValueError(f"Unknown cache kind: {kind!r}")
 
+    def __init__(self, db_path: str = C.FILE_PARSED_DB) -> None:
+        self._db_path = db_path
+        self._local = threading.local()
+        # Create schema on the main thread
+        conn = self._conn()
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS parsed "
+            "(verb TEXT PRIMARY KEY, data TEXT NOT NULL)"
+        )
+        conn.commit()
 
-def cache_exists(verb: str, kind: str = "html") -> bool:
-    """Check whether a cache file exists for *verb*."""
-    return os.path.exists(cache_path(verb, kind))
+    # Each thread gets its own connection (SQLite requirement)
+    def _conn(self) -> sqlite3.Connection:
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(self._db_path, timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            self._local.conn = conn
+        return conn
 
+    def has(self, verb: str) -> bool:
+        """Return ``True`` if *verb* has already been parsed and stored."""
+        row = self._conn().execute(
+            "SELECT 1 FROM parsed WHERE verb = ?", (verb,)
+        ).fetchone()
+        return row is not None
 
-# ---------------------------------------------------------------------------
-# Parsed-fragment I/O
-# ---------------------------------------------------------------------------
+    def put(self, verb: str, data: dict) -> None:
+        """Store parsed *data* for *verb* (upsert)."""
+        blob = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+        blob = blob.replace("\u2019", "'")  # normalise typographic apostrophes
+        conn = self._conn()
+        conn.execute(
+            "INSERT OR REPLACE INTO parsed (verb, data) VALUES (?, ?)",
+            (verb, blob),
+        )
+        conn.commit()
 
-def write_parsed_fragment(verb: str, data: dict) -> None:
-    """Serialise *data* as a minified JSON fragment for *verb*.
+    def all_entries(self) -> list[tuple[str, str]]:
+        """Return all ``(verb, json_string)`` rows sorted by verb."""
+        return self._conn().execute(
+            "SELECT verb, data FROM parsed ORDER BY verb"
+        ).fetchall()
 
-    The fragment is written without outer braces so that fragments can be
-    concatenated into a single JSON object later.
-    """
-    wrapped = {verb: data}
-    blob = json.dumps(wrapped, ensure_ascii=False, separators=(",", ":"))
-    blob = blob.replace("\u2019", "'")  # normalise typographic apostrophes
-    # Strip outer braces → bare key:value
-    Path(cache_path(verb, "parsed")).write_text(blob[1:-1], encoding="utf-8")
+    def count(self) -> int:
+        """Return the number of stored entries."""
+        row = self._conn().execute("SELECT COUNT(*) FROM parsed").fetchone()
+        return row[0] if row else 0
+
+    def close(self) -> None:
+        """Close the current thread's connection."""
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
+
+    def clear(self) -> None:
+        """Delete all entries."""
+        conn = self._conn()
+        conn.execute("DELETE FROM parsed")
+        conn.commit()
 
 
 # ---------------------------------------------------------------------------
 # Merge & output
 # ---------------------------------------------------------------------------
 
-def merge_parsed_files() -> dict:
-    """Merge all ``output/parsed/*.txt`` fragments into *verbs.min.json*.
-
-    Returns the merged dict.
-    """
-    parsed_dir = C.DIR_PARSED
-    fragments = sorted(f for f in os.listdir(parsed_dir) if f.endswith(".txt"))
-    if not fragments:
-        logger.warning("No parsed fragments found in %s", parsed_dir)
+def merge_store_to_json(store: ParsedStore) -> dict:
+    """Write all entries from *store* into ``verbs.min.json`` and return
+    the merged dict."""
+    entries = store.all_entries()
+    if not entries:
+        logger.warning("No parsed entries in store.")
         return {}
 
     out_path = C.FILE_VERBS_MIN_JSON
     with open(out_path, "w", encoding="utf-8") as out:
         out.write("{")
-        for i, name in enumerate(fragments):
-            fpath = os.path.join(parsed_dir, name)
-            content = Path(fpath).read_text(encoding="utf-8").strip()
-            out.write(content)
-            if i < len(fragments) - 1:
+        for i, (verb, blob) in enumerate(entries):
+            # Each blob is already a full JSON object like {"verb": {...}}
+            # Strip outer braces to get bare key:value fragment
+            out.write(blob[1:-1])
+            if i < len(entries) - 1:
                 out.write(",")
         out.write("}")
 

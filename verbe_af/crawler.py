@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from bs4 import BeautifulSoup
 
 from verbe_af import constants as C
-from verbe_af.cache import cache_exists, cache_path, write_parsed_fragment
+from verbe_af.cache import ParsedStore, html_cache_exists, html_cache_path
 from verbe_af.client import DictionaryClient
 from verbe_af.config import Config
 from verbe_af.exceptions import ParsingError
@@ -22,9 +22,10 @@ logger = logging.getLogger(__name__)
 class VerbCrawler:
     """Thread-safe verb crawler that coordinates the full pipeline."""
 
-    def __init__(self, cfg: Config, client: DictionaryClient) -> None:
+    def __init__(self, cfg: Config, client: DictionaryClient, store: ParsedStore) -> None:
         self._cfg = cfg
         self._client = client
+        self._store = store
         self._lock = threading.Lock()
         self._processed = 0
 
@@ -88,7 +89,7 @@ class VerbCrawler:
             seq = self._processed
 
         # Already parsed?
-        if not self._cfg.ignore_cache and cache_exists(verb, "parsed"):
+        if not self._cfg.ignore_cache and self._store.has(verb):
             logger.debug("(%*d/%d) '%s' already parsed — skipping.", width, seq, total, verb)
             return True
 
@@ -103,7 +104,7 @@ class VerbCrawler:
             logger.info("(%*d/%d) Processing: %s (ID %s)", width, seq, total, verb, verb_id)
 
         # Download
-        if not self._cfg.ignore_cache and cache_exists(verb, "html"):
+        if not self._cfg.ignore_cache and html_cache_exists(verb):
             logger.info("Using cached HTML for '%s'.", verb)
         else:
             logger.info("Downloading conjugation for '%s' …", verb)
@@ -114,8 +115,8 @@ class VerbCrawler:
         return self._parse_and_write(verb, verb_id)
 
     def _parse_and_write(self, verb: str, verb_id: str) -> bool:
-        """Read cached HTML, parse, transform, and write parsed fragments."""
-        html_path = cache_path(verb, "html")
+        """Read cached HTML, parse, transform, and store in ParsedStore."""
+        html_path = html_cache_path(verb)
         try:
             with open(html_path, encoding="utf-8") as fh:
                 raw = fh.read()
@@ -154,12 +155,12 @@ class VerbCrawler:
         transformed = transform_verb(verb, verb_data)
 
         # Write main entry
-        write_parsed_fragment(verb, transformed)
+        self._store.put(verb, {verb: transformed})
 
         # Write reformed-spelling entry if applicable
         entry = create_reformed_entry(verb, transformed)
         if entry:
             reformed_name, reformed_data = entry
-            write_parsed_fragment(reformed_name, reformed_data)
+            self._store.put(reformed_name, {reformed_name: reformed_data})
 
         return True

@@ -10,13 +10,13 @@ from enum import IntEnum
 # ---------------------------------------------------------------------------
 DIR_OUTPUT = "./output"
 DIR_CACHE = os.path.join(DIR_OUTPUT, "cache")
-DIR_PARSED = os.path.join(DIR_OUTPUT, "parsed")
 DIR_GEN_INFS = os.path.join(DIR_OUTPUT, "gen_infs")
 
 FILE_INFINITIVES = "./infinitives.txt"
 FILE_VERBS_JSON = os.path.join(DIR_OUTPUT, "verbs.json")
 FILE_VERBS_MIN_JSON = os.path.join(DIR_OUTPUT, "verbs.min.json")
 FILE_VERBS_DB = os.path.join(DIR_OUTPUT, "verbs.db")
+FILE_PARSED_DB = os.path.join(DIR_OUTPUT, "parsed.db")
 
 # ---------------------------------------------------------------------------
 # HTML structure constants

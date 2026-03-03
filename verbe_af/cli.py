@@ -8,9 +8,10 @@ import sys
 
 from verbe_af import __version__, constants as C
 from verbe_af.cache import (
+    ParsedStore,
     ensure_directories,
     count_lines,
-    merge_parsed_files,
+    merge_store_to_json,
     read_infinitives,
     write_formatted_json,
 )
@@ -153,7 +154,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("JSESSIONID = %s", cfg.jsession_id)
 
     # Prepare directories
-    dirs = [C.DIR_OUTPUT, C.DIR_CACHE, C.DIR_PARSED]
+    dirs = [C.DIR_OUTPUT, C.DIR_CACHE]
     if cfg.gen_infinitives:
         dirs.append(C.DIR_GEN_INFS)
     ensure_directories(dirs)
@@ -170,7 +171,11 @@ def main(argv: list[str] | None = None) -> None:
     verbs = read_infinitives(C.FILE_INFINITIVES)
     logger.info("Processing %d verbs with %d thread(s) …", total, cfg.max_threads)
 
-    crawler = VerbCrawler(cfg, client)
+    store = ParsedStore()
+    if cfg.ignore_cache:
+        store.clear()
+
+    crawler = VerbCrawler(cfg, client, store)
     success, failed = crawler.run(verbs)
     logger.info("Done: %d succeeded, %d failed.", success, len(failed))
 
@@ -182,10 +187,12 @@ def main(argv: list[str] | None = None) -> None:
     # Merge output
     logger.info("Merging parsed entries → %s", C.FILE_VERBS_MIN_JSON)
     try:
-        merged = merge_parsed_files()
+        merged = merge_store_to_json(store)
     except CrawlerError:
-        logger.exception("Failed to merge parsed files.")
+        logger.exception("Failed to merge parsed entries.")
         sys.exit(1)
+    finally:
+        store.close()
 
     logger.info("Writing formatted JSON → %s", C.FILE_VERBS_JSON)
     write_formatted_json(merged, C.FILE_VERBS_JSON)
