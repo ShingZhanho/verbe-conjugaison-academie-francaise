@@ -144,7 +144,29 @@ def _transform_tense(tense_data: dict) -> dict:
         for out_key in C.PERSON_EXPAND_MAP.get(person, (person,)):
             temp[out_key] = value
 
-    return {k: temp[k] for k in C.PERSON_ORDER if k in temp}
+    ordered = {k: temp[k] for k in C.PERSON_ORDER if k in temp}
+    return _merge_identical(ordered)
+
+
+def _merge_identical(tense: dict[str, str]) -> dict[str, str]:
+    """Merge person keys that share the same conjugation value.
+
+    ``{"1sm": "combine", "1sf": "combine"}`` → ``{"1sm;1sf": "combine"}``
+
+    Keys are joined with ``;`` and their relative order from
+    :data:`C.PERSON_ORDER` is preserved.
+    """
+    from collections import OrderedDict
+
+    # Group keys by value, preserving insertion order
+    groups: OrderedDict[str, list[str]] = OrderedDict()
+    for key, val in tense.items():
+        groups.setdefault(val, []).append(key)
+
+    merged: dict[str, str] = {}
+    for val, keys in groups.items():
+        merged[";".join(keys)] = val
+    return merged
 
 
 # ===================================================================
