@@ -91,8 +91,9 @@ def _transform_voice(voice_data: dict) -> dict:
 
 
 def _transform_participle(data: dict) -> dict:
+    present = data.get("present")
     result: dict = {
-        "present": data.get("present"),
+        "present": present,
         "passe": {},
     }
     passe = data.get("passe", {})
@@ -116,21 +117,40 @@ def _transform_participle(data: dict) -> dict:
     # Compound forms
     if "compose" in passe:
         compose = passe["compose"]
+        reforms = passe.get("compose_reforms", [])
+
         if "," in compose:
             parts = [p.strip() for p in compose.split(",")]
             if len(parts) >= 4:
                 aux_parts = parts[0].split()
                 aux = " ".join(aux_parts[:-1])
-                result["passe"]["compound_sm"] = parts[0]
-                result["passe"]["compound_sf"] = f"{aux} {parts[1]}"
-                result["passe"]["compound_pm"] = f"{aux} {parts[2]}"
-                result["passe"]["compound_pf"] = f"{aux} {parts[3]}"
+                sm_val = parts[0]
+                sf_val = f"{aux} {parts[1]}"
+                pm_val = f"{aux} {parts[2]}"
+                pf_val = f"{aux} {parts[3]}"
+
+                # Apply reform variants (reforms pair with masculine forms)
+                if reforms:
+                    if len(reforms) >= 1:
+                        sm_val += f"; {aux} {reforms[0]}"
+                    if len(reforms) >= 2:
+                        pm_val += f"; {aux} {reforms[1]}"
+
+                result["passe"]["compound_sm"] = sm_val
+                result["passe"]["compound_sf"] = sf_val
+                result["passe"]["compound_pm"] = pm_val
+                result["passe"]["compound_pf"] = pf_val
             else:
                 for k in ("compound_sm", "compound_sf", "compound_pm", "compound_pf"):
                     result["passe"][k] = compose
         else:
+            # Single reform for non-comma compound
+            reform_text = passe.get("compose_reform", "")
+            base = compose
+            if reform_text:
+                base += f"; {reform_text}"
             for k in ("compound_sm", "compound_sf", "compound_pm", "compound_pf"):
-                result["passe"][k] = compose
+                result["passe"][k] = base
 
     return result
 

@@ -7,7 +7,10 @@ downloaded from the Académie française dictionary.
 from __future__ import annotations
 
 import logging
+import re
 from typing import TYPE_CHECKING
+
+from bs4 import NavigableString
 
 from verbe_af import constants as C
 from verbe_af.constants import VoiceType
@@ -192,7 +195,10 @@ def _parse_participle(div: Tag, voice_type: VoiceType) -> dict:
         rows = tense_div.find_all("tr", class_="conj_line")
 
         if name == "présent":
-            result["present"] = _first_verb_text(rows)
+            if voice_type == VoiceType.PASSIVE:
+                result["present"] = _parse_passive_present_participle(rows)
+            else:
+                result["present"] = _first_verb_text(rows)
 
         elif name == "passé":
             result["passe"] = (
@@ -203,14 +209,69 @@ def _parse_participle(div: Tag, voice_type: VoiceType) -> dict:
     return result
 
 
+def _parse_passive_present_participle(rows: list[Tag]) -> dict:
+    """Parse passive present participle into gendered forms ``{sm, sf, pm, pf}``."""
+    for row in rows:
+        td = row.find("td", class_="conj_verb")
+        if td is None:
+            continue
+        main_text = _td_main_text(td)
+        if not main_text:
+            continue
+        forms = [f.strip() for f in main_text.split(",")]
+        if len(forms) >= 4:
+            first_parts = forms[0].split()
+            # Prefix is everything before the last word (e.g. "étant")
+            prefix = " ".join(first_parts[:-1])
+            reform_spans = td.find_all("span", class_="forme_rectif")
+            reforms = [s.get_text(strip=True) for s in reform_spans]
+            sm = forms[0]
+            if len(reforms) >= 1:
+                sm += f" ou {reforms[0]}"
+            sf = f"{prefix} {forms[1]}" if prefix else forms[1]
+            pm = f"{prefix} {forms[2]}" if prefix else forms[2]
+            if len(reforms) >= 2:
+                pm += f" ou {reforms[1]}"
+            pf = f"{prefix} {forms[3]}" if prefix else forms[3]
+            return {"sm": sm, "sf": sf, "pm": pm, "pf": pf}
+        # Fewer than 4 forms — return as-is
+        return _td_full_text(td)
+    return None
+
+
 def _first_verb_text(rows: list[Tag]) -> str | None:
+    """Get the text of the first verb cell, properly handling ``<span>`` elements."""
     for row in rows:
         td = row.find("td", class_="conj_verb")
         if td:
-            text = td.get_text(strip=True)
+            text = _td_full_text(td)
             if text:
                 return text
     return None
+
+
+# ---------------------------------------------------------------------------
+# Verb-cell text helpers
+# ---------------------------------------------------------------------------
+
+def _td_full_text(td: Tag) -> str:
+    """Get the full text from a ``conj_verb`` cell, preserving spaces."""
+    return re.sub(r"\s+", " ", td.get_text()).strip()
+
+
+def _td_main_text(td: Tag) -> str:
+    """Get text excluding ``<span class="or">`` and ``<span class="forme_rectif">``."""
+    parts: list[str] = []
+    for child in td.children:
+        if isinstance(child, NavigableString):
+            parts.append(str(child))
+        elif child.name == "span" and (
+            "or" in child.get("class", []) or "forme_rectif" in child.get("class", [])
+        ):
+            continue
+        else:
+            parts.append(child.get_text())
+    return re.sub(r"\s+", " ", "".join(parts)).strip()
 
 
 def _parse_active_passe(rows: list[Tag]) -> dict:
@@ -219,7 +280,8 @@ def _parse_active_passe(rows: list[Tag]) -> dict:
     if rows:
         td = rows[0].find("td", class_="conj_verb")
         if td:
-            forms = [f.strip() for f in td.get_text(strip=True).split(",")]
+            text = _td_main_text(td)
+            forms = [f.strip() for f in text.split(",")]
             if len(forms) >= 4:
                 data["singulier_m"] = forms[0]
                 data["singulier_f"] = forms[1]
@@ -228,9 +290,15 @@ def _parse_active_passe(rows: list[Tag]) -> dict:
     if len(rows) > 1:
         td = rows[1].find("td", class_="conj_verb")
         if td:
-            text = td.get_text(strip=True)
+            text = _td_main_text(td)
             if text:
                 data["compose"] = text
+                # Collect reform variant for the compound form
+                reform_spans = td.find_all("span", class_="forme_rectif")
+                if reform_spans:
+                    data["compose_reform"] = " ".join(
+                        s.get_text(strip=True) for s in reform_spans
+                    )
     return data
 
 
@@ -242,7 +310,7 @@ def _parse_passive_passe(rows: list[Tag]) -> dict:
     td = rows[0].find("td", class_="conj_verb")
     if td is None:
         return data
-    text = td.get_text(strip=True)
+    text = _td_main_text(td)
     forms = [f.strip() for f in text.split(",")]
     if len(forms) >= 4:
         first_parts = forms[0].split()
@@ -251,6 +319,10 @@ def _parse_passive_passe(rows: list[Tag]) -> dict:
         data["pluriel_m"] = forms[2]
         data["pluriel_f"] = forms[3]
         data["compose"] = text
+        # Collect per-form reform variants
+        reform_spans = td.find_all("span", class_="forme_rectif")
+        if reform_spans:
+            data["compose_reforms"] = [s.get_text(strip=True) for s in reform_spans]
     return data
 
 
@@ -349,26 +421,143 @@ def _parse_tense_rows(rows: list[Tag]) -> dict:
 
 def _parse_imperative_rows(rows: list[Tag]) -> dict:
     result: dict[str, str | None] = {"tu": None, "nous": None, "vous": None}
-    keys = ("tu", "nous", "vous")
-    for idx, row in enumerate(rows):
-        refl_tag = row.find("td", class_="conj_refl-pron")
-        aux_tag = row.find("td", class_="conj_auxil")
 
-        if refl_tag and not aux_tag:
-            aux = refl_tag.text.strip() + " "
-        elif aux_tag:
-            aux = aux_tag.text + " "
-        else:
-            aux = ""
-
+    for row in rows:
         verb_td = row.find("td", class_="conj_verb")
         if verb_td is None:
             continue
-        verb = str(list(verb_td.stripped_strings)[0]).strip()
-        verb = verb.split(",")[0].replace("\u00a0", "")
 
-        result[keys[idx]] = f"{aux}{verb}"
+        refl_tag = row.find("td", class_="conj_refl-pron")
+        aux_tag = row.find("td", class_="conj_auxil")
+
+        # --- Build the reflexive / auxiliary prefix ---
+        if refl_tag and not aux_tag:
+            prefix = refl_tag.text.strip() + " "
+        elif aux_tag:
+            prefix = aux_tag.text.strip() + " "
+        else:
+            prefix = ""
+
+        # --- Detect person from the row content ---
+        person = _detect_imperative_person(row, prefix)
+        if person is None:
+            continue
+
+        # --- Extract verb text ---
+        full_text = _td_full_text(verb_td)
+        main_text = _td_main_text(verb_td)
+        has_or = verb_td.find("span", class_="or") is not None
+        rectif_span = verb_td.find("span", class_="forme_rectif")
+
+        # Determine the pronoun suffix for this person
+        suffix_map = {
+            "tu": "-toi", "nous": "-nous", "vous": "-vous",
+        }
+        pronoun_suffix = suffix_map[person]
+
+        if prefix:
+            # Passé tense — prefix is the reflexive pronoun (e.g. "sois-toi ")
+            # The verb cell contains the participle (may be gendered: "assis, assise")
+            verb_forms = [f.strip().replace("\u00a0", "") for f in main_text.split(",")]
+            masc = verb_forms[0] if verb_forms else ""
+            fem = verb_forms[1] if len(verb_forms) > 1 else masc
+            masc_conj = f"{prefix}{masc}"
+            if fem != masc:
+                fem_conj = f"{prefix}{fem}"
+                result[person] = None
+                result[person + "_m"] = masc_conj
+                result[person + "_f"] = fem_conj
+            else:
+                result[person] = masc_conj
+        else:
+            # Présent tense — the verb form includes the pronoun suffix
+            if has_or:
+                # Alternative forms: "assieds ou assois-toi"
+                # The suffix may only appear on the last form
+                alt_forms = _extract_imperative_alternatives(verb_td, pronoun_suffix)
+                if rectif_span and not has_or:
+                    # Shouldn't reach here, but safety check
+                    result[person] = alt_forms
+                else:
+                    result[person] = alt_forms
+            else:
+                result[person] = full_text
+
     return result
+
+
+def _detect_imperative_person(row: Tag, prefix: str) -> str | None:
+    """Detect which person (tu/nous/vous) an imperative row corresponds to."""
+    # For passé: detect from the reflexive pronoun prefix
+    if prefix:
+        p = prefix.lower()
+        if "toi" in p:
+            return "tu"
+        if "nous" in p:
+            return "nous"
+        if "vous" in p:
+            return "vous"
+        return None
+
+    # For présent: detect from the verb form suffix
+    verb_td = row.find("td", class_="conj_verb")
+    if verb_td is None:
+        return None
+    text = _td_full_text(verb_td).lower()
+    # Check suffixes — order matters (check longer suffixes first)
+    if text.endswith("-nous-en") or text.endswith("-nous"):
+        return "nous"
+    if text.endswith("-vous-en") or text.endswith("-vous"):
+        return "vous"
+    # Apostrophe variants for "s'en aller" type
+    if text.endswith("-t\u2019en") or text.endswith("-t'en") or text.endswith("-toi"):
+        return "tu"
+    return None
+
+
+def _extract_imperative_alternatives(td: Tag, pronoun_suffix: str) -> str:
+    """Extract all alternative forms from an imperative verb cell.
+
+    When forms are separated by ``<span class="or">``, the pronoun suffix
+    (e.g. ``-toi``) often appears only on the last form.  This function
+    appends the suffix to any form that lacks it.
+
+    Reform variants (``<span class="forme_rectif">``) are joined with ``,``
+    (the transformer later converts to ``;``).
+    """
+    full = _td_full_text(td)
+    # Split on " ou " to get alternatives
+    parts = re.split(r"\s+ou\s+", full)
+    if len(parts) == 1:
+        return full
+
+    # Find the pronoun suffix from the last part
+    last = parts[-1]
+    actual_suffix = ""
+    for sfx in ("-nous-en", "-vous-en", "-t\u2019en", "-t'en", "-toi", "-nous", "-vous"):
+        if last.endswith(sfx):
+            actual_suffix = sfx
+            break
+
+    if not actual_suffix:
+        return full  # Can't identify suffix; return as-is
+
+    # Append suffix to forms that don't already have it
+    fixed: list[str] = []
+    for part in parts:
+        part = part.strip()
+        if not part.endswith(actual_suffix):
+            part += actual_suffix
+        fixed.append(part)
+
+    # Check if any form is a reform variant
+    rectif_span = td.find("span", class_="forme_rectif")
+    if rectif_span:
+        # Reform variant: join with comma (→ semicolon in transformer)
+        return ",".join(fixed)
+    else:
+        # Regular alternatives: join with "; "
+        return "; ".join(fixed)
 
 
 # ===================================================================
@@ -387,4 +576,7 @@ def _reflexive_text(row: Tag) -> str:
 
 def _auxiliary_text(row: Tag) -> str:
     tag = row.find("td", class_="conj_auxil")
-    return (tag.text + " ") if tag else ""
+    if tag is None:
+        return ""
+    text = re.sub(r"\s+", " ", tag.text).strip()
+    return (text + " ") if text else ""

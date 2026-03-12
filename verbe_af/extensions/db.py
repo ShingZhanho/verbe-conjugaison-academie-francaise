@@ -55,12 +55,22 @@ def generate_sqlite_db(cfg: Config, loaded_json: dict) -> None:
             # Participles
             part = voice.get("participe")
             if part:
-                if part.get("present"):
-                    cur.execute(
-                        "INSERT INTO participes (verbe_id, voix, forme, participe) VALUES (?,?,?,?)",
-                        (vid, voice_key, "present", part["present"]),
-                    )
-                    part_n += 1
+                pres = part.get("present")
+                if pres:
+                    if isinstance(pres, dict):
+                        # Passive voice — gendered present participle
+                        for form, val in pres.items():
+                            cur.execute(
+                                "INSERT INTO participes (verbe_id, voix, forme, participe) VALUES (?,?,?,?)",
+                                (vid, voice_key, f"present_{form}", val),
+                            )
+                            part_n += 1
+                    else:
+                        cur.execute(
+                            "INSERT INTO participes (verbe_id, voix, forme, participe) VALUES (?,?,?,?)",
+                            (vid, voice_key, "present", pres),
+                        )
+                        part_n += 1
                 for form, val in part.get("passe", {}).items():
                     cur.execute(
                         "INSERT INTO participes (verbe_id, voix, forme, participe) VALUES (?,?,?,?)",
