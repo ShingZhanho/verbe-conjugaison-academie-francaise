@@ -421,6 +421,9 @@ def _parse_tense_rows(rows: list[Tag]) -> dict:
 
 def _parse_imperative_rows(rows: list[Tag]) -> dict:
     result: dict[str, str | None] = {"tu": None, "nous": None, "vous": None}
+    # Positional order for non-pronominal present imperative (no suffix/prefix)
+    _POSITION_PERSONS = ["tu", "nous", "vous"]
+    position = 0
 
     for row in rows:
         verb_td = row.find("td", class_="conj_verb")
@@ -441,7 +444,13 @@ def _parse_imperative_rows(rows: list[Tag]) -> dict:
         # --- Detect person from the row content ---
         person = _detect_imperative_person(row, prefix)
         if person is None:
-            continue
+            # Fallback: positional assignment (rows are always tu/nous/vous)
+            if position < len(_POSITION_PERSONS):
+                person = _POSITION_PERSONS[position]
+            else:
+                position += 1
+                continue
+        position += 1
 
         # --- Extract verb text ---
         full_text = _td_full_text(verb_td)
@@ -488,7 +497,7 @@ def _parse_imperative_rows(rows: list[Tag]) -> dict:
 
 def _detect_imperative_person(row: Tag, prefix: str) -> str | None:
     """Detect which person (tu/nous/vous) an imperative row corresponds to."""
-    # For passé: detect from the reflexive pronoun prefix
+    # For pronominal passé: detect from the reflexive pronoun prefix
     if prefix:
         p = prefix.lower()
         if "toi" in p:
@@ -497,9 +506,18 @@ def _detect_imperative_person(row: Tag, prefix: str) -> str | None:
             return "nous"
         if "vous" in p:
             return "vous"
+        # Non-pronominal: detect from auxiliary (aie/sois→tu, ayons/soyons→nous,
+        # ayez/soyez→vous).  Strip "été" for passive compound auxiliaries.
+        first_word = p.split()[0] if p.split() else ""
+        if first_word in ("aie", "aies", "sois"):
+            return "tu"
+        if first_word in ("ayons", "soyons"):
+            return "nous"
+        if first_word in ("ayez", "soyez"):
+            return "vous"
         return None
 
-    # For présent: detect from the verb form suffix
+    # For présent: detect from the verb form suffix (pronominal)
     verb_td = row.find("td", class_="conj_verb")
     if verb_td is None:
         return None
@@ -540,7 +558,11 @@ def _extract_imperative_alternatives(td: Tag, pronoun_suffix: str) -> str:
             break
 
     if not actual_suffix:
-        return full  # Can't identify suffix; return as-is
+        # Non-pronominal: no pronoun suffix, just join the bare alternatives
+        stripped = [p.strip() for p in parts]
+        rectif_span = td.find("span", class_="forme_rectif")
+        sep = "," if rectif_span else "; "
+        return sep.join(stripped)
 
     # Append suffix to forms that don't already have it
     fixed: list[str] = []
