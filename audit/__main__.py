@@ -1,4 +1,4 @@
-"""Entry point for the audit GUI: ``python -m audit``."""
+"""Entry point for the audit tool: ``python -m audit`` (GUI) or ``python -m audit --auto``."""
 
 from __future__ import annotations
 
@@ -6,14 +6,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from PySide6.QtWidgets import QApplication
-
-from audit.app import MainWindow
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Manual audit GUI for parsed French conjugation data.",
+        description="Audit tool for parsed French conjugation data.",
     )
     parser.add_argument(
         "--json",
@@ -35,6 +31,11 @@ def main() -> None:
         default="",
         help="Auditor name recorded in the progress file.",
     )
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run automatic audit (no GUI). Approves simple units, skips complex ones.",
+    )
     args = parser.parse_args()
 
     json_path = Path(args.json)
@@ -46,6 +47,19 @@ def main() -> None:
     if not cache_dir.is_dir():
         print(f"Error: {cache_dir} not found.", file=sys.stderr)
         sys.exit(1)
+
+    if args.auto:
+        from audit.auto import run_auto_audit
+        run_auto_audit(
+            json_path=json_path,
+            cache_dir=cache_dir,
+            progress_path=args.progress,
+            auditor=args.auditor or "auto",
+        )
+        return
+
+    from PySide6.QtWidgets import QApplication
+    from audit.app import MainWindow
 
     app = QApplication(sys.argv)
     app.setApplicationName("Conjugation Audit")

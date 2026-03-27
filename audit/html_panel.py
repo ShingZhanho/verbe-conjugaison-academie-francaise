@@ -102,9 +102,11 @@ _WRAPPER_CSS_DARK = """\
 class HtmlPanel(QWidget):
     """Right-side panel showing the source HTML for a tense."""
 
-    def __init__(self, cache_dir: str | Path, parent: QWidget | None = None) -> None:
+    def __init__(self, cache_dir: str | Path, verbs_data: dict | None = None,
+                 parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._cache_dir = Path(cache_dir)
+        self._verbs_data = verbs_data or {}
         self._dark = self._is_dark_mode()
         self._css = _WRAPPER_CSS_DARK if self._dark else _WRAPPER_CSS_LIGHT
         self._web = QWebEngineView()
@@ -126,10 +128,23 @@ class HtmlPanel(QWidget):
         pal = QApplication.instance().palette()
         return pal.color(QPalette.ColorRole.Window).lightnessF() < 0.5
 
+    def _resolve_html_path(self, verb: str) -> Path | None:
+        """Find the cached HTML file for *verb*, falling back to its reform variant."""
+        direct = self._cache_dir / f"{verb}.html"
+        if direct.exists():
+            return direct
+        # Try the 1990 reform variant (e.g. naitre → naître.html)
+        variant = self._verbs_data.get(verb, {}).get("rectification_1990_variante")
+        if variant:
+            alt = self._cache_dir / f"{variant}.html"
+            if alt.exists():
+                return alt
+        return None
+
     def show_unit(self, unit: AuditUnit) -> None:
         """Load and display the HTML for the given audit unit."""
-        html_path = self._cache_dir / f"{unit.verb}.html"
-        if not html_path.exists():
+        html_path = self._resolve_html_path(unit.verb)
+        if html_path is None:
             self._web.setHtml(
                 self._css + '<div class="no-data">No cached HTML found.</div>'
             )

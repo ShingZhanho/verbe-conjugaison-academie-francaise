@@ -191,6 +191,30 @@ class AuditState:
         self._records[unit.key] = record
         self._save_all()
 
+    def add_record(self, unit: AuditUnit, status: str, auditor: str,
+                   flags: list[FlagEntry] | None = None,
+                   note: str = "") -> None:
+        """Stage a record in memory without writing to disk.
+
+        Call :meth:`flush` to persist all staged records at once.
+        """
+        record = AuditRecord(
+            verb=unit.verb,
+            voice=unit.voice,
+            mood=unit.mood,
+            tense=unit.tense,
+            status=status,
+            auditor=auditor,
+            timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            flags=flags or [],
+            note=note,
+        )
+        self._records[unit.key] = record
+
+    def flush(self) -> None:
+        """Write all records to disk (call after a batch of :meth:`add_record`)."""
+        self._save_all()
+
     def count_audited(self) -> int:
         return len(self._records)
 

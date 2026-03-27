@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         # ── panels ────────────────────────────────────────────────────
         self._json_panel = JsonPanel(self._data)
         self._json_panel.all_forms_ok.connect(self._on_all_forms_ok)
-        self._html_panel = HtmlPanel(self._cache_dir)
+        self._html_panel = HtmlPanel(self._cache_dir, verbs_data=self._data)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self._json_panel)
