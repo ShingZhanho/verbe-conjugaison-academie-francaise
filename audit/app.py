@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -38,6 +41,15 @@ _FILTER_UNAUDITED = "Unaudited"
 _FILTER_FLAGGED = "Flagged"
 _FILTER_OK = "OK"
 _FILTER_SKIPPED = "Skipped"
+
+_VOICE_ALL = "All voices"
+_VOICE_LABELS: dict[str, str] = {
+    "voix_active_avoir": "Active (avoir)",
+    "voix_active_etre": "Active (être)",
+    "voix_active": "Active",
+    "voix_passive": "Passive",
+    "voix_prono": "Pronominale",
+}
 
 
 class MainWindow(QMainWindow):
@@ -86,6 +98,17 @@ class MainWindow(QMainWindow):
         self._filter_combo.setMaximumWidth(140)
         self._filter_combo.currentTextChanged.connect(self._on_filter_changed)
 
+        self._voice_combo = QComboBox()
+        self._voice_combo.addItem(_VOICE_ALL)
+        for key, label in _VOICE_LABELS.items():
+            self._voice_combo.addItem(label, key)
+        self._voice_combo.setMaximumWidth(160)
+        self._voice_combo.currentIndexChanged.connect(self._on_filter_changed)
+
+        self._btn_export = QPushButton("Export flagged")
+        self._btn_export.setMaximumWidth(120)
+        self._btn_export.clicked.connect(self._export_flagged)
+
         self._progress_bar = QProgressBar()
         self._progress_bar.setTextVisible(True)
         self._progress_label = QLabel()
@@ -93,10 +116,15 @@ class MainWindow(QMainWindow):
         top_bar = QHBoxLayout()
         top_bar.addWidget(QLabel("Search:"))
         top_bar.addWidget(self._search)
-        top_bar.addSpacing(16)
-        top_bar.addWidget(QLabel("Filter:"))
+        top_bar.addSpacing(12)
+        top_bar.addWidget(QLabel("Status:"))
         top_bar.addWidget(self._filter_combo)
-        top_bar.addSpacing(16)
+        top_bar.addSpacing(12)
+        top_bar.addWidget(QLabel("Voice:"))
+        top_bar.addWidget(self._voice_combo)
+        top_bar.addSpacing(12)
+        top_bar.addWidget(self._btn_export)
+        top_bar.addSpacing(12)
         top_bar.addWidget(self._progress_bar, stretch=1)
         top_bar.addWidget(self._progress_label)
 
@@ -150,12 +178,14 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(bottom_bar)
         self.setCentralWidget(central)
 
-        # ── keyboard shortcuts ────────────────────────────────────────
-        QShortcut(QKeySequence("N"), self, self._go_next)
-        QShortcut(QKeySequence("P"), self, self._go_prev)
-        QShortcut(QKeySequence("O"), self, self._mark_ok)
-        QShortcut(QKeySequence("F"), self, self._mark_flagged)
-        QShortcut(QKeySequence("S"), self, self._mark_skipped)
+        # ── keyboard shortcuts (Alt+ to avoid conflict with search) ───
+        QShortcut(QKeySequence("Alt+N"), self, self._go_next)
+        QShortcut(QKeySequence("Alt+P"), self, self._go_prev)
+        QShortcut(QKeySequence("Alt+O"), self, self._mark_ok)
+        QShortcut(QKeySequence("Alt+F"), self, self._mark_flagged)
+        QShortcut(QKeySequence("Alt+S"), self, self._mark_skipped)
+        QShortcut(QKeySequence("Alt+Right"), self, self._go_next)
+        QShortcut(QKeySequence("Alt+Left"), self, self._go_prev)
 
         # ── initial display ───────────────────────────────────────────
         self._advance_to_first_unaudited()
@@ -274,29 +304,36 @@ class MainWindow(QMainWindow):
 
     # ── filter ────────────────────────────────────────────────────────
 
-    def _on_filter_changed(self, text: str) -> None:
-        if text == _FILTER_ALL:
-            self._filtered_units = list(self._all_units)
-        elif text == _FILTER_UNAUDITED:
-            self._filtered_units = [
-                u for u in self._all_units if not self._state.is_audited(u)
-            ]
-        elif text == _FILTER_FLAGGED:
-            self._filtered_units = [
-                u for u in self._all_units
+    def _on_filter_changed(self, *_args) -> None:
+        status_text = self._filter_combo.currentText()
+        voice_key = self._voice_combo.currentData()  # None for "All voices"
+
+        units = self._all_units
+
+        # Status filter
+        if status_text == _FILTER_UNAUDITED:
+            units = [u for u in units if not self._state.is_audited(u)]
+        elif status_text == _FILTER_FLAGGED:
+            units = [
+                u for u in units
                 if self._state.get(u) and self._state.get(u).status == STATUS_FLAGGED
             ]
-        elif text == _FILTER_OK:
-            self._filtered_units = [
-                u for u in self._all_units
+        elif status_text == _FILTER_OK:
+            units = [
+                u for u in units
                 if self._state.get(u) and self._state.get(u).status == STATUS_OK
             ]
-        elif text == _FILTER_SKIPPED:
-            self._filtered_units = [
-                u for u in self._all_units
+        elif status_text == _FILTER_SKIPPED:
+            units = [
+                u for u in units
                 if self._state.get(u) and self._state.get(u).status == STATUS_SKIPPED
             ]
 
+        # Voice filter
+        if voice_key:
+            units = [u for u in units if u.voice == voice_key]
+
+        self._filtered_units = units
         self._current_index = 0
         self._show_current()
 
@@ -315,4 +352,34 @@ class MainWindow(QMainWindow):
         self._progress_label.setText(
             f"{audited}/{total} ({pct:.1f}%) — "
             f"OK: {ok}  Flagged: {flagged}  Skipped: {skipped}"
+        )
+
+    # ── export ────────────────────────────────────────────────────────
+
+    def _export_flagged(self) -> None:
+        """Export all flagged records to a CSV file."""
+        flagged = [
+            r for r in self._state.records.values()
+            if r.status == STATUS_FLAGGED
+        ]
+        if not flagged:
+            QMessageBox.information(self, "Export", "No flagged items to export.")
+            return
+
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export flagged items", "audit/flagged_report.csv",
+            "CSV files (*.csv);;All files (*)",
+        )
+        if not path:
+            return
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["verb", "voice", "mood", "tense", "flagged_persons", "auditor", "timestamp"])
+            for r in sorted(flagged, key=lambda r: (r.verb, r.voice, r.mood, r.tense)):
+                persons = "; ".join(fl.person for fl in r.flags)
+                writer.writerow([r.verb, r.voice, r.mood, r.tense, persons, r.auditor, r.timestamp])
+
+        QMessageBox.information(
+            self, "Export", f"Exported {len(flagged)} flagged items to:\n{path}"
         )
