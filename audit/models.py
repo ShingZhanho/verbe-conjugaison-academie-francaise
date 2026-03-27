@@ -117,13 +117,14 @@ class AuditRecord:
     auditor: str = ""
     timestamp: str = ""
     flags: list[FlagEntry] = field(default_factory=list)
+    note: str = ""
 
     @property
     def key(self) -> str:
         return f"{self.verb}|{self.voice}|{self.mood}|{self.tense}"
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "verb": self.verb,
             "voice": self.voice,
             "mood": self.mood,
@@ -133,6 +134,9 @@ class AuditRecord:
             "ts": self.timestamp,
             "flags": [f.to_dict() for f in self.flags],
         }
+        if self.note:
+            d["note"] = self.note
+        return d
 
     @staticmethod
     def from_dict(d: dict) -> AuditRecord:
@@ -145,6 +149,7 @@ class AuditRecord:
             auditor=d.get("auditor", ""),
             timestamp=d.get("ts", ""),
             flags=[FlagEntry.from_dict(f) for f in d.get("flags", [])],
+            note=d.get("note", ""),
         )
 
 
@@ -170,7 +175,8 @@ class AuditState:
         return unit.key in self._records
 
     def save_record(self, unit: AuditUnit, status: str, auditor: str,
-                    flags: list[FlagEntry] | None = None) -> None:
+                    flags: list[FlagEntry] | None = None,
+                    note: str = "") -> None:
         record = AuditRecord(
             verb=unit.verb,
             voice=unit.voice,
@@ -180,6 +186,7 @@ class AuditState:
             auditor=auditor,
             timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             flags=flags or [],
+            note=note,
         )
         self._records[unit.key] = record
         self._save_all()

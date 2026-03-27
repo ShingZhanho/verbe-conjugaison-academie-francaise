@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import csv
 import io
+import random
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QFileDialog,
     QHBoxLayout,
@@ -21,7 +24,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QKeySequence, QShortcut
 
 from audit.html_panel import HtmlPanel
 from audit.json_panel import JsonPanel
@@ -67,6 +69,7 @@ class MainWindow(QMainWindow):
         # ── data ──────────────────────────────────────────────────────
         self._data = load_verbs(json_path)
         self._all_units = enumerate_units(self._data)
+        random.shuffle(self._all_units)
         self._state = AuditState(progress_path)
         self._auditor = auditor or "anonymous"
         self._cache_dir = Path(cache_dir)
@@ -74,6 +77,10 @@ class MainWindow(QMainWindow):
         # Filtered view
         self._filtered_units: list[AuditUnit] = list(self._all_units)
         self._current_index = 0
+
+        # Dark mode detection
+        pal = QApplication.instance().palette()
+        self._dark = pal.color(QPalette.ColorRole.Window).lightnessF() < 0.5
 
         # ── panels ────────────────────────────────────────────────────
         self._json_panel = JsonPanel(self._data)
@@ -130,7 +137,10 @@ class MainWindow(QMainWindow):
 
         # ── bottom bar: navigation + audit actions ────────────────────
         self._lbl_position = QLabel()
-        self._lbl_position.setStyleSheet("font-weight: bold; min-width: 120px;")
+        pos_color = "#ddd" if self._dark else "inherit"
+        self._lbl_position.setStyleSheet(
+            f"font-weight: bold; min-width: 120px; color: {pos_color};"
+        )
 
         btn_prev = QPushButton("◀ Previous")
         btn_prev.clicked.connect(self._go_prev)
@@ -161,11 +171,18 @@ class MainWindow(QMainWindow):
         )
         self._btn_skip.clicked.connect(self._mark_skipped)
 
+        self._note_input = QLineEdit()
+        self._note_input.setPlaceholderText("Describe the issue…")
+        self._note_input.setMinimumWidth(260)
+
         bottom_bar = QHBoxLayout()
         bottom_bar.addWidget(btn_prev)
         bottom_bar.addWidget(self._lbl_position)
         bottom_bar.addWidget(btn_next)
-        bottom_bar.addStretch()
+        bottom_bar.addSpacing(12)
+        bottom_bar.addWidget(QLabel("Note:"))
+        bottom_bar.addWidget(self._note_input, stretch=1)
+        bottom_bar.addSpacing(12)
         bottom_bar.addWidget(self._btn_ok)
         bottom_bar.addWidget(self._btn_flag)
         bottom_bar.addWidget(self._btn_skip)
@@ -228,6 +245,9 @@ class MainWindow(QMainWindow):
         if record and record.flags:
             self._json_panel.set_flags([f.person for f in record.flags])
 
+        # Restore note
+        self._note_input.setText(record.note if record else "")
+
         # Position label
         self._lbl_position.setText(
             f"{self._current_index + 1} / {len(self._filtered_units)}"
@@ -257,19 +277,22 @@ class MainWindow(QMainWindow):
 
     def _mark_ok(self) -> None:
         unit = self._filtered_units[self._current_index]
-        self._state.save_record(unit, STATUS_OK, self._auditor)
+        self._state.save_record(unit, STATUS_OK, self._auditor,
+                                note=self._note_input.text().strip())
         self._auto_advance()
 
     def _mark_flagged(self) -> None:
         unit = self._filtered_units[self._current_index]
         flagged = self._json_panel.get_flagged_persons()
         flags = [FlagEntry(person=p) for p in flagged]
-        self._state.save_record(unit, STATUS_FLAGGED, self._auditor, flags)
+        self._state.save_record(unit, STATUS_FLAGGED, self._auditor, flags,
+                                note=self._note_input.text().strip())
         self._auto_advance()
 
     def _mark_skipped(self) -> None:
         unit = self._filtered_units[self._current_index]
-        self._state.save_record(unit, STATUS_SKIPPED, self._auditor)
+        self._state.save_record(unit, STATUS_SKIPPED, self._auditor,
+                                note=self._note_input.text().strip())
         self._auto_advance()
 
     def _auto_advance(self) -> None:
@@ -375,10 +398,10 @@ class MainWindow(QMainWindow):
 
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["verb", "voice", "mood", "tense", "flagged_persons", "auditor", "timestamp"])
+            writer.writerow(["verb", "voice", "mood", "tense", "flagged_persons", "note", "auditor", "timestamp"])
             for r in sorted(flagged, key=lambda r: (r.verb, r.voice, r.mood, r.tense)):
                 persons = "; ".join(fl.person for fl in r.flags)
-                writer.writerow([r.verb, r.voice, r.mood, r.tense, persons, r.auditor, r.timestamp])
+                writer.writerow([r.verb, r.voice, r.mood, r.tense, persons, r.note, r.auditor, r.timestamp])
 
         QMessageBox.information(
             self, "Export", f"Exported {len(flagged)} flagged items to:\n{path}"
