@@ -303,7 +303,7 @@ def _parse_active_passe(rows: list[Tag]) -> dict:
 
 
 def _parse_passive_passe(rows: list[Tag]) -> dict:
-    """Passive past participle — single compound row only."""
+    """Passive past participle — compound form only (no simple forms)."""
     data: dict = {}
     if not rows:
         return data
@@ -313,13 +313,7 @@ def _parse_passive_passe(rows: list[Tag]) -> dict:
     text = _td_main_text(td)
     forms = [f.strip() for f in text.split(",")]
     if len(forms) >= 4:
-        first_parts = forms[0].split()
-        data["singulier_m"] = first_parts[-1]
-        data["singulier_f"] = forms[1]
-        data["pluriel_m"] = forms[2]
-        data["pluriel_f"] = forms[3]
         data["compose"] = text
-        # Collect per-form reform variants
         reform_spans = td.find_all("span", class_="forme_rectif")
         if reform_spans:
             data["compose_reforms"] = [s.get_text(strip=True) for s in reform_spans]
@@ -375,18 +369,44 @@ def _parse_tense_rows(rows: list[Tag]) -> dict:
         if verb_el is None:
             continue
 
-        main_text = str(list(verb_el.stripped_strings)[0]).strip()
+        has_or = verb_el.find("span", class_="or") is not None
+        rectif_span = verb_el.find("span", class_="forme_rectif")
+
+        # --- Extract main and alternative forms ---
+        if has_or and not rectif_span:
+            # Non-reform alternative: "form1 ou form2[, fem2]"
+            full_text = _td_full_text(verb_el)
+            or_parts = re.split(r"\s+ou\s+", full_text, maxsplit=1)
+            main_text = or_parts[0].strip()
+            alt_text = or_parts[1].strip() if len(or_parts) > 1 else ""
+        else:
+            main_text = _td_main_text(verb_el)
+            alt_text = ""
+
         forms = [f.strip().replace("\u00a0", "") for f in main_text.split(",")]
         masc = forms[0] if forms else ""
         fem = forms[1] if len(forms) > 1 else masc
 
-        # 1990 reform variant
-        rectif_span = row.find("span", class_="forme_rectif")
+        # Parse alternative / 1990 reform variant
         if rectif_span:
             rf = rectif_span.text.strip()
             rf_forms = [f.strip().replace("\u00a0", "") for f in rf.split(",")]
             rf_masc = rf_forms[0] if rf_forms else ""
-            rf_fem = rf_forms[1] if len(rf_forms) > 1 else rf_masc
+            if len(rf_forms) > 1:
+                rf_fem = rf_forms[1]
+            elif fem != masc:
+                rf_fem = ""   # masculine-only reform
+            else:
+                rf_fem = rf_masc
+        elif alt_text:
+            alt_forms = [f.strip().replace("\u00a0", "") for f in alt_text.split(",")]
+            rf_masc = alt_forms[0] if alt_forms else ""
+            if len(alt_forms) > 1:
+                rf_fem = alt_forms[1]
+            elif fem != masc:
+                rf_fem = ""   # masculine-only alternative
+            else:
+                rf_fem = rf_masc
         else:
             rf_masc = rf_fem = ""
 
@@ -397,7 +417,7 @@ def _parse_tense_rows(rows: list[Tag]) -> dict:
         # Build feminine conjugation when the verb form differs by gender
         if fem != masc:
             fem_conj = f"{refl}{aux}{fem}"
-            if rf_fem and rf_fem != fem:
+            if rf_fem:
                 fem_conj += f",{refl}{aux}{rf_fem}"
         else:
             fem_conj = masc_conj
@@ -560,9 +580,7 @@ def _extract_imperative_alternatives(td: Tag, pronoun_suffix: str) -> str:
     if not actual_suffix:
         # Non-pronominal: no pronoun suffix, just join the bare alternatives
         stripped = [p.strip() for p in parts]
-        rectif_span = td.find("span", class_="forme_rectif")
-        sep = "," if rectif_span else "; "
-        return sep.join(stripped)
+        return ",".join(stripped)
 
     # Append suffix to forms that don't already have it
     fixed: list[str] = []
@@ -572,14 +590,7 @@ def _extract_imperative_alternatives(td: Tag, pronoun_suffix: str) -> str:
             part += actual_suffix
         fixed.append(part)
 
-    # Check if any form is a reform variant
-    rectif_span = td.find("span", class_="forme_rectif")
-    if rectif_span:
-        # Reform variant: join with comma (→ semicolon in transformer)
-        return ",".join(fixed)
-    else:
-        # Regular alternatives: join with "; "
-        return "; ".join(fixed)
+    return ",".join(fixed)
 
 
 # ===================================================================

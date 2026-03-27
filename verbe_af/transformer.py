@@ -100,13 +100,13 @@ def _transform_participle(data: dict) -> dict:
     if not passe:
         return result
 
-    # Simple forms
+    # Simple forms (only for active/pronominal, not passive compound-only)
     if "singulier_m" in passe:
         result["passe"]["sm"] = passe["singulier_m"]
         result["passe"]["sf"] = passe["singulier_f"]
         result["passe"]["pm"] = passe["pluriel_m"]
         result["passe"]["pf"] = passe["pluriel_f"]
-    elif "compose" in passe:
+    elif "compose" in passe and "," not in passe["compose"]:
         # Invariable participle — extract last word from compound
         word = passe["compose"].split()[-1]
         result["passe"]["sm"] = word
