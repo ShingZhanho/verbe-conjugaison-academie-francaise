@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
     ) -> None:
         super().__init__()
         self.setWindowTitle("Conjugation Audit")
-        self.resize(1400, 800)
+        self.resize(1100, 700)
 
         # ── data ──────────────────────────────────────────────────────
         self._data = load_verbs(json_path)
@@ -84,6 +84,7 @@ class MainWindow(QMainWindow):
 
         # ── panels ────────────────────────────────────────────────────
         self._json_panel = JsonPanel(self._data)
+        self._json_panel.all_forms_ok.connect(self._on_all_forms_ok)
         self._html_panel = HtmlPanel(self._cache_dir)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -244,6 +245,8 @@ class MainWindow(QMainWindow):
         record = self._state.get(unit)
         if record and record.flags:
             self._json_panel.set_flags([f.person for f in record.flags])
+        if record and record.status == STATUS_OK:
+            self._json_panel.set_all_ok(True)
 
         # Restore note
         self._note_input.setText(record.note if record else "")
@@ -274,6 +277,10 @@ class MainWindow(QMainWindow):
             self._btn_skip.setText("Skip")
 
     # ── audit actions ─────────────────────────────────────────────────
+
+    def _on_all_forms_ok(self) -> None:
+        """Auto-confirm when every per-form OK is checked and nothing flagged."""
+        self._mark_ok()
 
     def _mark_ok(self) -> None:
         unit = self._filtered_units[self._current_index]

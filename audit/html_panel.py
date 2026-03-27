@@ -48,10 +48,13 @@ _TENSE_DISPLAY: dict[str, str] = {
 
 _WRAPPER_CSS_LIGHT = """\
 <style>
+  html { height: 100%; margin: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 14px;
     padding: 16px;
+    margin: 0;
+    min-height: 100%;
     background: #fafaf8;
     color: #333;
   }
@@ -71,10 +74,13 @@ _WRAPPER_CSS_LIGHT = """\
 
 _WRAPPER_CSS_DARK = """\
 <style>
+  html { height: 100%; margin: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     font-size: 14px;
     padding: 16px;
+    margin: 0;
+    min-height: 100%;
     background: #1e1e1e;
     color: #d4d4d4;
   }

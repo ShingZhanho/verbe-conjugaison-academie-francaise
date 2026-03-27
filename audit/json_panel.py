@@ -112,6 +112,60 @@ class FlagButton(QPushButton):
         )
 
 
+class OkButton(QPushButton):
+    """Toggle button for marking a single form as OK."""
+
+    ok_toggled = Signal(str, bool)  # person_key, is_ok
+
+    def __init__(self, person_key: str, parent: QWidget | None = None) -> None:
+        super().__init__("OK", parent)
+        self._person_key = person_key
+        self._ok = False
+        self._dark = _is_dark_mode()
+        self.setCheckable(True)
+        self.setFixedWidth(40)
+        self.setStyleSheet(self._style())
+        self.clicked.connect(self._on_click)
+
+    def _on_click(self) -> None:
+        self._ok = self.isChecked()
+        self.setText("✓" if self._ok else "OK")
+        self.setStyleSheet(self._style())
+        self.ok_toggled.emit(self._person_key, self._ok)
+
+    def set_ok(self, ok: bool) -> None:
+        self._ok = ok
+        self.setChecked(ok)
+        self.setText("✓" if ok else "OK")
+        self.setStyleSheet(self._style())
+
+    @property
+    def is_ok(self) -> bool:
+        return self._ok
+
+    @property
+    def person_key(self) -> str:
+        return self._person_key
+
+    def _style(self) -> str:
+        if self._ok:
+            return (
+                "QPushButton { background: #27ae60; color: white; border: none; "
+                "border-radius: 3px; padding: 2px 6px; font-weight: bold; }"
+            )
+        if self._dark:
+            return (
+                "QPushButton { background: #444; color: #aaa; border: 1px solid #666; "
+                "border-radius: 3px; padding: 2px 6px; }"
+                "QPushButton:hover { background: #2d5a3d; color: #27ae60; border-color: #27ae60; }"
+            )
+        return (
+            "QPushButton { background: #ecf0f1; color: #666; border: 1px solid #ccc; "
+            "border-radius: 3px; padding: 2px 6px; }"
+            "QPushButton:hover { background: #d5f5e3; color: #1e8449; border-color: #27ae60; }"
+        )
+
+
 def _person_label(key: str) -> str:
     """Build a human-readable label for a (possibly merged) person key."""
     parts = key.split(";")
@@ -127,14 +181,16 @@ def _person_label(key: str) -> str:
 
 
 class JsonPanel(QWidget):
-    """Left-side panel showing parsed JSON data with flag buttons."""
+    """Left-side panel showing parsed JSON data with per-form OK and flag buttons."""
 
     flags_changed = Signal()  # emitted when any flag is toggled
+    all_forms_ok = Signal()   # emitted when every OK checked, nothing flagged
 
     def __init__(self, data: dict, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._data = data
         self._flag_buttons: list[FlagButton] = []
+        self._ok_buttons: list[OkButton] = []
         self._dark = _is_dark_mode()
 
         header_color = "#ccc" if self._dark else "#555"
@@ -159,6 +215,7 @@ class JsonPanel(QWidget):
         """Display the parsed data for the given unit."""
         self._clear_content()
         self._flag_buttons.clear()
+        self._ok_buttons.clear()
 
         voice_label = unit.voice.replace("_", " ")
         mood_label = unit.mood.capitalize()
@@ -188,6 +245,11 @@ class JsonPanel(QWidget):
         flagged_set = set(flagged_persons)
         for btn in self._flag_buttons:
             btn.set_flagged(btn.person_key in flagged_set)
+
+    def set_all_ok(self, checked: bool) -> None:
+        """Set all per-form OK buttons to the given state."""
+        for btn in self._ok_buttons:
+            btn.set_ok(checked)
 
     def _render_tense(self, tense_data: dict) -> None:
         """Render a regular tense (person → conjugation)."""
@@ -225,7 +287,7 @@ class JsonPanel(QWidget):
                 self._add_form_row(f"passe.{sub_key}", label, str(val))
 
     def _add_form_row(self, key: str, label: str, value: str) -> None:
-        """Add a single form row: [label] [value] [flag button]."""
+        """Add a single form row: [label] [value] [OK button] [Flag button]."""
         row = QHBoxLayout()
         row.setSpacing(8)
 
@@ -243,15 +305,45 @@ class JsonPanel(QWidget):
         )
         val.setWordWrap(True)
 
+        ok_btn = OkButton(key)
+        ok_btn.ok_toggled.connect(self._on_ok_toggled)
+        self._ok_buttons.append(ok_btn)
+
         btn = FlagButton(key)
-        btn.flag_toggled.connect(lambda *_: self.flags_changed.emit())
+        btn.flag_toggled.connect(self._on_flag_toggled)
         self._flag_buttons.append(btn)
 
         row.addWidget(lbl)
         row.addWidget(val, stretch=1)
+        row.addWidget(ok_btn)
         row.addWidget(btn)
 
         self._content_layout.addLayout(row)
+
+    def _on_ok_toggled(self, person_key: str, is_ok: bool) -> None:
+        """When OK is checked, uncheck the corresponding flag button."""
+        if is_ok:
+            for fb in self._flag_buttons:
+                if fb.person_key == person_key and fb.is_flagged:
+                    fb.set_flagged(False)
+        self._check_all_ok()
+
+    def _on_flag_toggled(self, person_key: str, is_flagged: bool) -> None:
+        """When Flag is checked, uncheck the corresponding OK button."""
+        if is_flagged:
+            for ob in self._ok_buttons:
+                if ob.person_key == person_key and ob.is_ok:
+                    ob.set_ok(False)
+        self.flags_changed.emit()
+
+    def _check_all_ok(self) -> None:
+        """Emit all_forms_ok if every form is OK and nothing is flagged."""
+        if not self._ok_buttons:
+            return
+        all_ok = all(b.is_ok for b in self._ok_buttons)
+        any_flagged = any(b.is_flagged for b in self._flag_buttons)
+        if all_ok and not any_flagged:
+            self.all_forms_ok.emit()
 
     def _clear_content(self) -> None:
         """Remove all widgets from the content layout."""
