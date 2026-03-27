@@ -313,6 +313,18 @@ The codebase is organised as a Python package (`verbe_af/`) with clean separatio
 | `verbe_af/constants.py` | Immutable constants, `VoiceType` enum, person key maps |
 | `verbe_af/exceptions.py` | `CrawlerError` hierarchy |
 | `verbe_af/extensions/` | Optional generators (infinitives, SQLite) |
+| `audit/` | PySide6 GUI for manual data verification |
+
+### Audit GUI
+
+A PySide6-based manual verification tool for comparing parsed JSON data against source HTML:
+
+```bash
+pip install -r audit/requirements.txt
+python -m audit --auditor yourname
+```
+
+**Features**: split-pane layout (JSON vs source HTML), per-tense review units, per-form flag buttons, status/voice filters, CSV export of flagged items, JSONL progress file (Git-collaborative), keyboard shortcuts (`Alt+O`/`Alt+F`/`Alt+S`/`Alt+N`/`Alt+P`).
 
 ## Related Resources
 
