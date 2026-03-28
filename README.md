@@ -124,11 +124,12 @@ Two JSON files are generated:
 - `conditionnel` - Conditional (2 tenses)
 - `imperatif` - Imperative (2 tenses)
 
-**Persons** (personnes) — full `{1,2,3} × {s,p} × {m,f}` grid:
+**Persons** (personnes) — full `{1,2,3} × {s,p} × {m,f,n}` grid:
 - `1sm` / `1sf` — je (first person singular masculine / feminine)
 - `2sm` / `2sf` — tu (second person singular masculine / feminine)
 - `3sm` — il (third person singular masculine)
 - `3sf` — elle (third person singular feminine)
+- `3sn` — on (third person singular neutral — used by reciprocal verbs like *s'entraider*)
 - `1pm` / `1pf` — nous (first person plural masculine / feminine)
 - `2pm` / `2pf` — vous (second person plural masculine / feminine)
 - `3pm` — ils (third person plural masculine)
@@ -278,12 +279,13 @@ python -m verbe_af --ignore-cache --gen-sqlite3 --max-threads 8
 ## Data Accuracy
 
 ### Gender Agreement
-The parser correctly extracts gender-specific conjugations from the Académie française dictionary for **all six persons**:
+The parser correctly extracts gender-specific conjugations from the Académie française dictionary for **all persons**:
 - **All persons** receive distinct masculine/feminine forms when the verb includes a gender-agreeing past participle (passive voice, être auxiliary compound tenses, pronominal compound tenses)
 - Example: "je suis allé" (1sm) vs "je suis allée" (1sf)
 - Example: "il est allé" (3sm) vs "elle est allée" (3sf)
 - Example: "ils sont allés" (3pm) vs "elles sont allées" (3pf)
 - When masculine and feminine forms are identical (simple tenses, avoir auxiliary), person keys are merged: `"1sm;1sf": "vais"`
+- **Reciprocal verbs** using the pronoun **on** are assigned the neutral key `3sn` (e.g., *s'entraider*: `"3sn": "s'entraide"`)
 
 ### 1990 Orthography Reform
 Verbs with reformed spellings are tracked:

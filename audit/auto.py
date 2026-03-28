@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # We check that every base person has at least one key covering it.
 _STANDARD_PERSONS = {"1sm", "1sf", "2sm", "2sf", "3sm", "3sf",
                      "1pm", "1pf", "2pm", "2pf", "3pm", "3pf"}
+_STANDARD_PERSONS_ON = {"3sn", "1pm", "1pf", "2pm", "2pf", "3pm", "3pf"}
 _IMPERATIVE_PERSONS = {"2sm", "2sf", "1pm", "1pf", "2pm", "2pf"}
 
 
@@ -132,12 +133,13 @@ def classify_unit(
 
     # Person coverage check
     covered = _persons_covered(form_data)
+    expected = _STANDARD_PERSONS_ON if "3sn" in covered else _STANDARD_PERSONS
 
     if unit.mood == "imperatif":
         if not _IMPERATIVE_PERSONS.issubset(covered):
             return False, "missing imperative persons"
     else:
-        if not _STANDARD_PERSONS.issubset(covered):
+        if not expected.issubset(covered):
             return False, "missing person keys"
 
     return True, ""

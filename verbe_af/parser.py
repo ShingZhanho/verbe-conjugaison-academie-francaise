@@ -46,7 +46,9 @@ def _map_pronoun(pronoun: str) -> str | tuple[str, str] | None:
         return "elles"
     if "il" in p and "elle" in p:
         return ("il", "elle")
-    if "il" in p or "on" in p:
+    if "on" in p:
+        return "on"
+    if "il" in p:
         return "il"
     if "elle" in p:
         return "elle"
@@ -287,6 +289,14 @@ def _parse_active_passe(rows: list[Tag]) -> dict:
                 data["singulier_f"] = forms[1]
                 data["pluriel_m"] = forms[2]
                 data["pluriel_f"] = forms[3]
+                # Capture reform variants for simple forms
+                reform_spans = td.find_all("span", class_="forme_rectif")
+                if reform_spans:
+                    rfs = [s.get_text(strip=True) for s in reform_spans]
+                    if len(rfs) >= 1:
+                        data["singulier_m_reform"] = rfs[0]
+                    if len(rfs) >= 2:
+                        data["pluriel_m_reform"] = rfs[1]
     if len(rows) > 1:
         td = rows[1].find("td", class_="conj_verb")
         if td:
@@ -349,7 +359,7 @@ def _parse_mood(div: Tag, *, imperative: bool = False) -> dict:
 
 def _parse_tense_rows(rows: list[Tag]) -> dict:
     result: dict[str, str | None] = {
-        "je": None, "tu": None, "il": None,
+        "je": None, "tu": None, "il": None, "on": None,
         "nous": None, "vous": None, "ils": None,
     }
 

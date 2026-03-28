@@ -27,6 +27,7 @@ _PERSON_LABELS: dict[str, str] = {
     "2sf": "tu (f)",
     "3sm": "il",
     "3sf": "elle",
+    "3sn": "on",
     "1pm": "nous (m)",
     "1pf": "nous (f)",
     "2pm": "vous (m)",

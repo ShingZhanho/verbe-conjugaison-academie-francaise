@@ -79,13 +79,14 @@ PERSON_EXPAND_MAP: dict[str, tuple[str, ...]] = {
     # 3rd person — always single-gender
     "il":      ("3sm",),
     "elle":    ("3sf",),
+    "on":      ("3sn",),
     "ils":     ("3pm",),
     "elles":   ("3pf",),
 }
 
 # Ordered list of all 12 person keys for deterministic output
 PERSON_ORDER: list[str] = [
-    "1sm", "1sf", "2sm", "2sf", "3sm", "3sf",
+    "1sm", "1sf", "2sm", "2sf", "3sm", "3sf", "3sn",
     "1pm", "1pf", "2pm", "2pf", "3pm", "3pf",
 ]
 

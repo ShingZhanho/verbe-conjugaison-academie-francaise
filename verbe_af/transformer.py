@@ -102,9 +102,15 @@ def _transform_participle(data: dict) -> dict:
 
     # Simple forms (only for active/pronominal, not passive compound-only)
     if "singulier_m" in passe:
-        result["passe"]["sm"] = passe["singulier_m"]
+        sm = passe["singulier_m"]
+        if "singulier_m_reform" in passe:
+            sm += "; " + passe["singulier_m_reform"]
+        result["passe"]["sm"] = sm
         result["passe"]["sf"] = passe["singulier_f"]
-        result["passe"]["pm"] = passe["pluriel_m"]
+        pm = passe["pluriel_m"]
+        if "pluriel_m_reform" in passe:
+            pm += "; " + passe["pluriel_m_reform"]
+        result["passe"]["pm"] = pm
         result["passe"]["pf"] = passe["pluriel_f"]
     elif "compose" in passe and "," not in passe["compose"]:
         # Invariable participle — extract last word from compound
@@ -117,7 +123,10 @@ def _transform_participle(data: dict) -> dict:
     # Compound forms
     if "compose" in passe:
         compose = passe["compose"]
+        # Passive uses compose_reforms (list); active uses compose_reform (str)
         reforms = passe.get("compose_reforms", [])
+        if not reforms and "compose_reform" in passe:
+            reforms = [passe["compose_reform"]]
 
         if "," in compose:
             parts = [p.strip() for p in compose.split(",")]
