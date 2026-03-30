@@ -179,7 +179,14 @@ class DictionaryClient:
 
     @staticmethod
     def _extract_entry_id(response_json: dict, verb: str) -> str | None:
-        """Pick the first verb entry whose label matches *verb* exactly."""
+        """Pick the best verb entry whose label matches *verb* exactly.
+
+        When multiple homonym entries share the same label (e.g. "I. partir"
+        the archaic defective form vs. "II. partir" the common verb), prefer
+        the non-defective entry so that the richer, modern conjugation page
+        is chosen.
+        """
+        matches = []
         for entry in response_json.get("result", []):
             nature = entry.get("nature", "")
             if "v." not in nature:
@@ -191,7 +198,23 @@ class DictionaryClient:
                 .replace(" (se)", "")
             )
             if label == verb:
-                return entry["url"].split("/")[-1]
+                matches.append(entry)
 
-        logger.warning("No exact match for '%s' in search results", verb)
-        return None
+        if not matches:
+            logger.warning("No exact match for '%s' in search results", verb)
+            return None
+
+        if len(matches) == 1:
+            return matches[0]["url"].split("/")[-1]
+
+        # Multiple homonyms: prefer entries not marked as defective.
+        non_defective = [
+            e for e in matches
+            if "défectif" not in e.get("nature", "").lower()
+        ]
+        chosen = (non_defective or matches)[0]
+        logger.info(
+            "Multiple entries for '%s': chose %s (nature: %s)",
+            verb, chosen["url"].split("/")[-1], chosen.get("nature", ""),
+        )
+        return chosen["url"].split("/")[-1]

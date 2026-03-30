@@ -58,14 +58,18 @@ def generate_infinitives(cfg: Config, client: DictionaryClient) -> None:
                 continue
             logger.info("Found %d entries for '%s'", len(items), letter.upper())
 
-            # Deduplicate by verb name (keep first occurrence)
-            seen: dict[str, str] = {}
+            # Deduplicate by verb name.
+            # When multiple homonym entries share the same label (e.g.
+            # "I. partir" the archaic defective form vs. "II. partir" the
+            # common verb), prefer the non-defective entry.
+            seen: dict[str, tuple[bool, str]] = {}  # {verb: (is_defective, verb_id)}
             for item in items:
                 a_tag = item.find("a")
                 if not a_tag or not a_tag.get("href"):
                     continue
 
-                entry = item.text.split(",")[0].strip()
+                full_text = item.text.strip()
+                entry = full_text.split(",")[0].strip()
                 entry = entry.replace("\u2019", "'")
                 entry = entry.replace(" (s')", "").replace(" (se)", "")
 
@@ -74,10 +78,11 @@ def generate_infinitives(cfg: Config, client: DictionaryClient) -> None:
                     logger.warning("Unexpected verb_id '%s' for '%s' — skipping.", verb_id, entry)
                     continue
 
-                if entry not in seen:
-                    seen[entry] = verb_id
+                is_defective = "défectif" in full_text.lower()
+                if entry not in seen or (seen[entry][0] and not is_defective):
+                    seen[entry] = (is_defective, verb_id)
 
-            pairs = sorted(seen.items())
+            pairs = sorted((v, data[1]) for v, data in seen.items())
             logger.info("%d unique infinitives for '%s'", len(pairs), letter.upper())
 
             with open(output_path, "a", encoding="utf-8") as fh:

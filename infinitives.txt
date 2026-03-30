@@ -4267,7 +4267,7 @@ parsemer:A9P0742
 partager:A9P0750
 participer:A9P0773
 particulariser:A9P0776
-partir:A9P0786
+partir:A9P0787
 parvenir:A9P0800
 passementer:A9P0841
 passepoiler:A9P0851
