@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sqlite3
 import threading
+from collections import defaultdict
 from pathlib import Path
 
 from verbe_af import constants as C
@@ -182,3 +184,110 @@ def write_formatted_json(data: dict, filepath: str) -> None:
     """Write *data* as indented JSON to *filepath*."""
     with open(filepath, "w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=4)
+
+
+# ---------------------------------------------------------------------------
+# Homonym merging
+# ---------------------------------------------------------------------------
+
+_SUFFIX_RE = re.compile(r'_(\d+)$')
+
+_META_KEYS = frozenset({
+    "rectification_1990",
+    "rectification_1990_variante",
+    "h_aspire",
+})
+
+
+def _voice_data(entry: dict) -> dict:
+    """Return only the voice keys from *entry* (strip metadata)."""
+    return {k: v for k, v in entry.items() if k not in _META_KEYS}
+
+
+def _is_subset(a: dict, b: dict) -> bool:
+    """Return True if voice data *a* is a subset of *b*.
+
+    *a* ⊆ *b* means every voice key in *a* also exists in *b* with
+    identical content.
+    """
+    for key, val in a.items():
+        if key not in b or b[key] != val:
+            return False
+    return True
+
+
+def merge_homonyms(data: dict) -> dict:
+    """Merge ``verb_1`` / ``verb_2`` homonyms where conjugation data is
+    identical or one is a strict subset of the other.
+
+    Rules applied within each homonym group:
+      * Entries with identical voice data are collapsed into one.
+      * If one entry's voices are a strict subset of another, the smaller
+        is absorbed into the larger.
+      * After collapsing, if only one distinct entry remains it is stored
+        under the base name (no suffix).  Otherwise each distinct entry
+        keeps a ``_N`` suffix (renumbered from 1).
+
+    Returns a new dict with merged entries.
+    """
+    # Group suffixed entries by base name
+    groups: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+    passthrough: dict[str, dict] = {}
+
+    for key, entry in data.items():
+        m = _SUFFIX_RE.search(key)
+        if m:
+            base = key[:m.start()]
+            groups[base].append((key, entry))
+        else:
+            passthrough[key] = entry
+
+    # Process each homonym group
+    merged_count = 0
+    kept_count = 0
+    for base, members in sorted(groups.items()):
+        if len(members) == 1:
+            # Single suffixed entry (partner missing) — keep suffix
+            passthrough[members[0][0]] = members[0][1]
+            kept_count += 1
+            continue
+
+        # Deduplicate: cluster identical / subset entries.
+        # Each cluster is represented by its "best" (superset) member.
+        clusters: list[tuple[str, dict, dict]] = []  # (key, entry, voices)
+        for key, entry in members:
+            vd = _voice_data(entry)
+            absorbed = False
+            for ci, (ck, ce, cv) in enumerate(clusters):
+                if vd == cv or _is_subset(vd, cv):
+                    # This entry is identical to or a subset of the cluster
+                    absorbed = True
+                    break
+                if _is_subset(cv, vd):
+                    # Cluster is a subset of this entry — replace
+                    clusters[ci] = (key, entry, vd)
+                    absorbed = True
+                    break
+            if not absorbed:
+                clusters.append((key, entry, vd))
+
+        if len(clusters) == 1:
+            ck, ce, _ = clusters[0]
+            passthrough[base] = ce
+            merged_count += 1
+            logger.info("Merged %d homonyms → '%s'", len(members), base)
+        else:
+            # Renumber from _1
+            for i, (ck, ce, _) in enumerate(clusters, 1):
+                suffixed = f"{base}_{i}"
+                passthrough[suffixed] = ce
+            kept_count += len(clusters)
+            logger.debug(
+                "Kept %d distinct homonyms for '%s'", len(clusters), base,
+            )
+
+    logger.info(
+        "Homonym merge: %d groups merged, %d suffixed entries kept.",
+        merged_count, kept_count,
+    )
+    return passthrough

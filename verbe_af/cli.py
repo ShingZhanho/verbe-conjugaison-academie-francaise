@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 
@@ -11,6 +12,7 @@ from verbe_af.cache import (
     ParsedStore,
     ensure_directories,
     count_lines,
+    merge_homonyms,
     merge_store_to_json,
     read_infinitives,
     write_formatted_json,
@@ -194,8 +196,15 @@ def main(argv: list[str] | None = None) -> None:
     finally:
         store.close()
 
+    logger.info("Merging homonym entries …")
+    merged = merge_homonyms(merged)
+
     logger.info("Writing formatted JSON → %s", C.FILE_VERBS_JSON)
     write_formatted_json(merged, C.FILE_VERBS_JSON)
+
+    # Rewrite min JSON after homonym merging
+    with open(C.FILE_VERBS_MIN_JSON, "w", encoding="utf-8") as fh:
+        json.dump(merged, fh, ensure_ascii=False, separators=(",", ":"))
 
     # Extension: SQLite
     if cfg.gen_sqlite3:

@@ -13,6 +13,8 @@ DIR_CACHE = os.path.join(DIR_OUTPUT, "cache")
 DIR_GEN_INFS = os.path.join(DIR_OUTPUT, "gen_infs")
 
 FILE_INFINITIVES = "./infinitives.txt"
+FILE_EXCLUDE_INFINITIVES = "./exclude_infinitives.txt"
+FILE_FORCE_REMAP_INFINITIVES = "./infinitives_force_remap.txt"
 FILE_VERBS_JSON = os.path.join(DIR_OUTPUT, "verbs.json")
 FILE_VERBS_MIN_JSON = os.path.join(DIR_OUTPUT, "verbs.min.json")
 FILE_VERBS_DB = os.path.join(DIR_OUTPUT, "verbs.db")

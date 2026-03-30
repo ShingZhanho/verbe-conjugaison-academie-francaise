@@ -1,0 +1,13 @@
+accroire:A9A0324
+assavoir:A9A2812
+bienvenir:A9B1056
+caponner:A9C0644
+courre:A9C4638
+ester:A9E2713
+fiche:A9F0669
+forhuir:A9F1266*
+férir:A9F0482
+nul:A9N0806
+quérir:A9Q0187
+ravoir:A9R0664
+sur-aller:A9S3525
