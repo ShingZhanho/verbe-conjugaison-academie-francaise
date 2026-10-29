@@ -93,7 +93,7 @@ def generate_infinitives(cfg: Config, client: DictionaryClient) -> None:
     """
     output_path = os.path.join(C.DIR_GEN_INFS, "infinitives.txt")
 
-    exclude = _load_exclude_set(C.FILE_EXCLUDE_INFINITIVES)
+    exclude = _load_exclude_set(C.FILE_EXCLUDE_INFINITIVES) | C.EXCLUDED_VERBS
     remap = _load_force_remap(C.FILE_FORCE_REMAP_INFINITIVES)
 
     if os.path.exists(output_path):

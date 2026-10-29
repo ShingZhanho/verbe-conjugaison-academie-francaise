@@ -88,6 +88,12 @@ class VerbCrawler:
             self._processed += 1
             seq = self._processed
 
+        if self._cfg.reparse_cache:
+            if not html_cache_exists(verb):
+                logger.error("Missing HTML cache for '%s'.", verb)
+                return False
+            return self._parse_and_write(verb, verb_id or "")
+
         # Already parsed?
         if not self._cfg.ignore_cache and self._store.has(verb):
             logger.debug("(%*d/%d) '%s' already parsed — skipping.", width, seq, total, verb)
@@ -139,7 +145,9 @@ class VerbCrawler:
 
         # Shrink full-page caches on the fly
         stripped = raw.lstrip()
-        if stripped.startswith("<!DOCTYPE") or stripped.startswith("<html"):
+        if not self._cfg.reparse_cache and (
+            stripped.startswith("<!DOCTYPE") or stripped.startswith("<html")
+        ):
             logger.info("Shrinking full-page cache for '%s'.", verb)
             with open(html_path, "w", encoding="utf-8") as fh:
                 fh.write(str(root))

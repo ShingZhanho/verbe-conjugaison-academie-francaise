@@ -35,11 +35,12 @@ def generate_sqlite_db(cfg: Config, loaded_json: dict) -> None:
 
     for infinitive, verb_data in loaded_json.items():
         cur.execute(
-            """INSERT INTO verbes (infinitif, h_aspire, rectification_1990, rectification_1990_variante)
-               VALUES (?, ?, ?, ?)""",
+            """INSERT INTO verbes (infinitif, h_aspire, bloque_elision_liaison, rectification_1990, rectification_1990_variante)
+               VALUES (?, ?, ?, ?, ?)""",
             (
                 infinitive,
                 verb_data.get("h_aspire", False),
+                verb_data.get("bloque_elision_liaison", False),
                 verb_data.get("rectification_1990", False),
                 verb_data.get("rectification_1990_variante"),
             ),
@@ -119,7 +120,8 @@ def _create_schema(cur: sqlite3.Cursor) -> None:
             infinitif TEXT UNIQUE NOT NULL,
             h_aspire BOOLEAN DEFAULT 0,
             rectification_1990 BOOLEAN DEFAULT 0,
-            rectification_1990_variante TEXT
+            rectification_1990_variante TEXT,
+            bloque_elision_liaison BOOLEAN NOT NULL DEFAULT 0
         )
     """)
     cur.execute("""

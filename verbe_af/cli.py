@@ -47,6 +47,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     cfg = parser.add_argument_group("configuration")
     cfg.add_argument("--ignore-cache", action="store_true", help="re-fetch and re-parse everything")
+    cfg.add_argument("--reparse-cache", action="store_true",
+                     help="reparse cached HTML without network access; fail if a cache is missing")
     cfg.add_argument("--max-retry", type=int, default=5, metavar="N", help="HTTP retry limit (default: 5)")
     cfg.add_argument("--requests-delay", type=int, default=500, metavar="MS",
                      help="delay between requests in ms (default: 500)")
@@ -67,6 +69,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _build_config(ns: argparse.Namespace) -> Config:
     """Convert parsed arguments into a :class:`Config` instance."""
+    if ns.reparse_cache and (ns.ignore_cache or ns.gen_infinitives):
+        raise ConfigError("--reparse-cache cannot be combined with --ignore-cache or --gen-infinitives")
     if ns.requests_delay < 0:
         raise ConfigError("--requests-delay must be non-negative")
     if ns.max_threads < 1:
@@ -74,6 +78,7 @@ def _build_config(ns: argparse.Namespace) -> Config:
 
     cfg = Config(
         ignore_cache=ns.ignore_cache,
+        reparse_cache=ns.reparse_cache,
         max_retry=ns.max_retry,
         request_delay_ms=ns.requests_delay,
         max_threads=ns.max_threads,
@@ -150,10 +155,10 @@ def main(argv: list[str] | None = None) -> None:
     client = DictionaryClient(cfg)
 
     # Ensure JSESSIONID
-    if cfg.jsession_id is None:
+    if cfg.jsession_id is None and not cfg.reparse_cache:
         logger.info("Obtaining JSESSIONID …")
         cfg.jsession_id = client.obtain_jsession_id()
-    logger.info("JSESSIONID = %s", cfg.jsession_id)
+    logger.info("Session ready (offline cache reparse: %s).", cfg.reparse_cache)
 
     # Prepare directories
     dirs = [C.DIR_OUTPUT, C.DIR_CACHE]
@@ -174,7 +179,7 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Processing %d verbs with %d thread(s) …", total, cfg.max_threads)
 
     store = ParsedStore()
-    if cfg.ignore_cache:
+    if cfg.ignore_cache or cfg.reparse_cache:
         store.clear()
 
     crawler = VerbCrawler(cfg, client, store)
@@ -185,6 +190,11 @@ def main(argv: list[str] | None = None) -> None:
         logger.info("Failed verbs: %s%s",
                      ", ".join(failed[:10]),
                      " …" if len(failed) > 10 else "")
+
+    if cfg.reparse_cache and failed:
+        store.close()
+        logger.error("Offline reparse incomplete; output artifacts were not regenerated.")
+        sys.exit(1)
 
     # Merge output
     logger.info("Merging parsed entries → %s", C.FILE_VERBS_MIN_JSON)

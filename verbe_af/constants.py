@@ -23,6 +23,8 @@ FILE_PARSED_DB = os.path.join(DIR_OUTPUT, "parsed.db")
 # ---------------------------------------------------------------------------
 # HTML structure constants
 # ---------------------------------------------------------------------------
+EXCLUDED_VERBS = frozenset({"sur-aller", "suraller"})
+
 VERB_ID_PREFIX = "A9"  # All 9th-edition verb div IDs start with this
 
 

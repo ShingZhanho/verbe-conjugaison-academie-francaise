@@ -44,6 +44,7 @@ class Config:
 
     # --- Behaviour ----------------------------------------------------------
     ignore_cache: bool = False
+    reparse_cache: bool = False
     verbose: bool = False
     log_file: str | None = None
 

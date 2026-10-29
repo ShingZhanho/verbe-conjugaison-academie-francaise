@@ -2,7 +2,7 @@
 
 Responsibilities:
 - Map pronoun keys (je → 1s, tu → 2s …)
-- Transform participle keys (singulier_m → sm …)
+- Preserve explicitly parsed participle gender/number slots
 - Expand compound participles
 - Detect and create 1990 spelling-reform variant entries
 """
@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import re
 
 from verbe_af import constants as C
 
@@ -32,13 +33,39 @@ def transform_verb(verb: str, verb_data: dict) -> dict:
     )
 
     for key, value in verb_data.items():
-        if key == "h_aspire":
-            result["h_aspire"] = value
+        if key.startswith("_"):
+            continue
+        if key in ("h_aspire", "bloque_elision_liaison"):
+            result[key] = value
             continue
 
         # key is a voice key (voix_active_avoir, voix_passive, …)
         result[key] = _transform_voice(value)
 
+    if verb_data.get("_circumflex_alternatives"):
+        match = re.search(r"^.*?[îû]", verb)
+        if match:
+            lexical_prefix = match.group()
+            plain_prefix = lexical_prefix.replace("î", "i").replace("û", "u")
+            pattern = re.compile(r"(?<!\w)" + re.escape(lexical_prefix))
+
+            def add_alternatives(value):
+                if isinstance(value, dict):
+                    return {key: add_alternatives(item) for key, item in value.items()}
+                if not isinstance(value, str):
+                    return value
+                forms = [item.strip() for item in value.split(";")]
+                # Replace only the lexical prefix, never auxiliary or grammatical
+                # circumflexes (e.g. connûmes, abîmâmes, eût).
+                for form in list(forms):
+                    alternative = pattern.sub(plain_prefix, form)
+                    if alternative not in forms:
+                        forms.append(alternative)
+                return ";".join(forms)
+
+            for key in C.VOICE_KEYS:
+                if key in result:
+                    result[key] = add_alternatives(result[key])
     return result
 
 
@@ -56,18 +83,16 @@ def create_reformed_entry(verb: str, transformed: dict) -> tuple[str, dict] | No
     data["rectification_1990"] = True
     data["rectification_1990_variante"] = verb  # points back to original
 
-    # Swap semicolon-separated variants so reformed form comes first
-    for voice_key, voice_data in data.items():
-        if voice_key in ("h_aspire", "rectification_1990", "rectification_1990_variante"):
-            continue
-        for mood_key, mood_data in voice_data.items():
-            if mood_key == "participe":
-                continue
-            for tense_key, tense_data in mood_data.items():
-                for person_key, conj in tense_data.items():
-                    if ";" in conj:
-                        parts = conj.split(";")
-                        tense_data[person_key] = ";".join(reversed(parts))
+    def prefer_reform(value):
+        if isinstance(value, dict):
+            return {key: prefer_reform(item) for key, item in value.items()}
+        if isinstance(value, str) and ";" in value:
+            return ";".join(reversed([part.strip() for part in value.split(";")]))
+        return value
+
+    for key in C.VOICE_KEYS:
+        if key in data:
+            data[key] = prefer_reform(data[key])
 
     logger.info("Created reformed entry: %s → %s", reformed, verb)
     return reformed, data
@@ -91,77 +116,11 @@ def _transform_voice(voice_data: dict) -> dict:
 
 
 def _transform_participle(data: dict) -> dict:
-    present = data.get("present")
-    result: dict = {
-        "present": present,
-        "passe": {},
-    }
     passe = data.get("passe", {})
-    if not passe:
-        return result
-
-    # Simple forms (only for active/pronominal, not passive compound-only)
-    if "singulier_m" in passe:
-        sm = passe["singulier_m"]
-        if "singulier_m_reform" in passe:
-            sm += "; " + passe["singulier_m_reform"]
-        result["passe"]["sm"] = sm
-        result["passe"]["sf"] = passe["singulier_f"]
-        pm = passe["pluriel_m"]
-        if "pluriel_m_reform" in passe:
-            pm += "; " + passe["pluriel_m_reform"]
-        result["passe"]["pm"] = pm
-        result["passe"]["pf"] = passe["pluriel_f"]
-    elif "compose" in passe and "," not in passe["compose"]:
-        # Invariable participle — extract last word from compound
-        word = passe["compose"].split()[-1]
-        result["passe"]["sm"] = word
-        result["passe"]["sf"] = word
-        result["passe"]["pm"] = word
-        result["passe"]["pf"] = word
-
-    # Compound forms
-    if "compose" in passe:
-        compose = passe["compose"]
-        # Passive uses compose_reforms (list); active uses compose_reform (str)
-        reforms = passe.get("compose_reforms", [])
-        if not reforms and "compose_reform" in passe:
-            reforms = [passe["compose_reform"]]
-
-        if "," in compose:
-            parts = [p.strip() for p in compose.split(",")]
-            if len(parts) >= 4:
-                aux_parts = parts[0].split()
-                aux = " ".join(aux_parts[:-1])
-                sm_val = parts[0]
-                sf_val = f"{aux} {parts[1]}"
-                pm_val = f"{aux} {parts[2]}"
-                pf_val = f"{aux} {parts[3]}"
-
-                # Apply reform variants (reforms pair with masculine forms)
-                if reforms:
-                    if len(reforms) >= 1:
-                        sm_val += f"; {aux} {reforms[0]}"
-                    if len(reforms) >= 2:
-                        pm_val += f"; {aux} {reforms[1]}"
-
-                result["passe"]["compound_sm"] = sm_val
-                result["passe"]["compound_sf"] = sf_val
-                result["passe"]["compound_pm"] = pm_val
-                result["passe"]["compound_pf"] = pf_val
-            else:
-                for k in ("compound_sm", "compound_sf", "compound_pm", "compound_pf"):
-                    result["passe"][k] = compose
-        else:
-            # Single reform for non-comma compound
-            reform_text = passe.get("compose_reform", "")
-            base = compose
-            if reform_text:
-                base += f"; {reform_text}"
-            for k in ("compound_sm", "compound_sf", "compound_pm", "compound_pf"):
-                result["passe"][k] = base
-
-    return result
+    forms = dict(passe.get("simple", {}))
+    forms.update({f"compound_{key}": value
+                  for key, value in passe.get("compound", {}).items()})
+    return {"present": data.get("present"), "passe": forms}
 
 
 def _transform_tense(tense_data: dict) -> dict:

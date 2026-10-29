@@ -66,9 +66,19 @@ def _map_pronoun(pronoun: str) -> str | tuple[str, str] | None:
 def parse_conjugation_table(root_tag: Tag, verb: str) -> dict | None:
     """Parse a ``div#<verb_id>`` element into a structured conjugation dict.
 
-    Returns ``{verb: {voice_key: {...}, ..., "h_aspire": bool}}``
+    Return voices and lexical h-aspiré / elision-liaison blocking flags,
     or ``None`` when no parseable voice is found.
     """
+    if re.sub(r"_\d+$", "", verb) in C.EXCLUDED_VERBS:
+        return None
+    if verb == "aller":
+        # The source incorrectly inserts a separate infinitive as an alternative.
+        # Correct only the two known cells; retain the valid allons alternative.
+        for td in root_tag.select("td.conj_verb"):
+            if _td_full_text(td) == "allons ou sur-aller":
+                td.clear()
+                td.append("allons")
+
     voices = _detect_voices(root_tag)
     if not voices:
         logger.warning("No conjugation data found for '%s'. Skipping.", verb)
@@ -79,10 +89,51 @@ def parse_conjugation_table(root_tag: Tag, verb: str) -> dict | None:
         logger.info("Parsing %s …", voice_key)
         data[voice_key] = _parse_voice(voice_tag, voice_type)
 
-    # h aspiré detection
-    data["h_aspire"] = verb[0] == "h" and "H aspiré" in root_tag.text
+    _restore_missing_singular_participles(verb, data)
+    # The source labels disjunction "H aspiré" even for ululer and yoyoter.
+    blocked = "H aspiré" in root_tag.text
+    data["h_aspire"] = blocked and verb.lower().startswith("h")
+    data["bloque_elision_liaison"] = blocked
+    # Internal parsing instruction only; never exported as database metadata.
+    data["_circumflex_alternatives"] = (
+        "La conjugaison sans l’accent circonflexe sur î ou û est admise"
+        in root_tag.get_text(" ", strip=True)
+    )
 
     return {verb: data} if data else None
+
+
+# Seven source rows omit singulars, confirmed against cached and live tables
+# on 2026-10-29. Correct only these exact plural lists, never generic lists.
+# Traditional spelling: the circumflex belongs to the masculine singular.
+_MISSING_SINGULAR_PARTICIPLES = {
+    "croître": ("crû", "crue", "crus", "crues", (
+        ("voix_active_etre", "passe", "compound", "étant"),)),
+    "recroître": ("recrû", "recrue", "recrus", "recrues", (
+        ("voix_active_etre", "passe", "compound", "étant"),)),
+    "devoir": ("dû", "due", "dus", "dues", (
+        ("voix_passive", "present", None, "étant"),
+        ("voix_passive", "passe", "compound", "ayant été"),
+        ("voix_prono", "passe", "compound", "s’étant"))),
+    "redevoir": ("redû", "redue", "redus", "redues", (
+        ("voix_passive", "present", None, "étant"),
+        ("voix_passive", "passe", "compound", "ayant été"))),
+}
+
+
+def _restore_missing_singular_participles(verb: str, data: dict) -> None:
+    lemma = re.sub(r"_\d+$", "", verb)
+    lemma = {"croitre": "croître", "recroitre": "recroître"}.get(lemma, lemma)
+    correction = _MISSING_SINGULAR_PARTICIPLES.get(lemma)
+    if correction is None:
+        return
+    sm, sf, pm, pf, families = correction
+    for voice, tense, kind, prefix in families:
+        forms = data.get(voice, {}).get("participe", {}).get(tense, {})
+        if kind is not None:
+            forms = forms.get(kind, {})
+        if forms == {"pm": f"{prefix} {pm}", "pf": f"{prefix} {pf}"}:
+            forms.update(sm=f"{prefix} {sm}", sf=f"{prefix} {sf}")
 
 
 # ===================================================================
@@ -211,33 +262,50 @@ def _parse_participle(div: Tag, voice_type: VoiceType) -> dict:
     return result
 
 
-def _parse_passive_present_participle(rows: list[Tag]) -> dict:
-    """Parse passive present participle into gendered forms ``{sm, sf, pm, pf}``."""
+def _participle_forms(td: Tag, *, compound: bool = False) -> dict[str, str]:
+    """Expand only the gender/number forms explicitly supplied by the source.
+
+    Four comma groups are sm/sf/pm/pf. The partial two-group plural lists
+    (dus, dues; crus, crues) supply pm/pf only. A single group is invariant.
+    Each group's alternatives inherit the complete compound auxiliary prefix.
+    """
+    text = _td_full_text(td).replace(" (invariable)", "")
+    groups = [part.strip() for part in text.split(",") if part.strip()]
+    if not groups:
+        return {}
+    prefix = ""
+    if compound:
+        first = re.split(r"\s+ou\s+", groups[0])[0]
+        prefix = " ".join(first.split()[:-1])
+    if len(groups) == 4:
+        keys = ("sm", "sf", "pm", "pf")
+    elif len(groups) == 2 and all(
+        re.split(r"\s+ou\s+", group)[0].split()[-1].endswith("s")
+        for group in groups
+    ):
+        keys = ("pm", "pf")
+    elif len(groups) == 1:
+        keys = ("sm", "sf", "pm", "pf")
+        groups *= 4
+    else:
+        raise ValueError(f"Unrecognized partial participle list: {text!r}")
+
+    result = {}
+    for key, group in zip(keys, groups):
+        alternatives = re.split(r"\s+ou\s+", group)
+        result[key] = ";".join(
+            value if not prefix or value.startswith(prefix + " ")
+            else f"{prefix} {value}"
+            for value in alternatives
+        )
+    return result
+
+
+def _parse_passive_present_participle(rows: list[Tag]) -> dict | None:
     for row in rows:
         td = row.find("td", class_="conj_verb")
-        if td is None:
-            continue
-        main_text = _td_main_text(td)
-        if not main_text:
-            continue
-        forms = [f.strip() for f in main_text.split(",")]
-        if len(forms) >= 4:
-            first_parts = forms[0].split()
-            # Prefix is everything before the last word (e.g. "étant")
-            prefix = " ".join(first_parts[:-1])
-            reform_spans = td.find_all("span", class_="forme_rectif")
-            reforms = [s.get_text(strip=True) for s in reform_spans]
-            sm = forms[0]
-            if len(reforms) >= 1:
-                sm += f" ou {reforms[0]}"
-            sf = f"{prefix} {forms[1]}" if prefix else forms[1]
-            pm = f"{prefix} {forms[2]}" if prefix else forms[2]
-            if len(reforms) >= 2:
-                pm += f" ou {reforms[1]}"
-            pf = f"{prefix} {forms[3]}" if prefix else forms[3]
-            return {"sm": sm, "sf": sf, "pm": pm, "pf": pf}
-        # Fewer than 4 forms — return as-is
-        return _td_full_text(td)
+        if td is not None:
+            return _participle_forms(td, compound=True)
     return None
 
 
@@ -277,57 +345,21 @@ def _td_main_text(td: Tag) -> str:
 
 
 def _parse_active_passe(rows: list[Tag]) -> dict:
-    """Active / pronominal past participle — up to 2 rows (simple + compound)."""
-    data: dict = {}
-    if rows:
-        td = rows[0].find("td", class_="conj_verb")
-        if td:
-            text = _td_main_text(td)
-            forms = [f.strip() for f in text.split(",")]
-            if len(forms) >= 4:
-                data["singulier_m"] = forms[0]
-                data["singulier_f"] = forms[1]
-                data["pluriel_m"] = forms[2]
-                data["pluriel_f"] = forms[3]
-                # Capture reform variants for simple forms
-                reform_spans = td.find_all("span", class_="forme_rectif")
-                if reform_spans:
-                    rfs = [s.get_text(strip=True) for s in reform_spans]
-                    if len(rfs) >= 1:
-                        data["singulier_m_reform"] = rfs[0]
-                    if len(rfs) >= 2:
-                        data["pluriel_m_reform"] = rfs[1]
-    if len(rows) > 1:
-        td = rows[1].find("td", class_="conj_verb")
-        if td:
-            text = _td_main_text(td)
-            if text:
-                data["compose"] = text
-                # Collect reform variant for the compound form
-                reform_spans = td.find_all("span", class_="forme_rectif")
-                if reform_spans:
-                    data["compose_reform"] = " ".join(
-                        s.get_text(strip=True) for s in reform_spans
-                    )
+    """Keep explicit simple forms even when the compound row is absent."""
+    data = {}
+    for name, row in zip(("simple", "compound"), rows):
+        td = row.find("td", class_="conj_verb")
+        if td is not None:
+            data[name] = _participle_forms(td, compound=name == "compound")
     return data
 
 
 def _parse_passive_passe(rows: list[Tag]) -> dict:
-    """Passive past participle — compound form only (no simple forms)."""
-    data: dict = {}
-    if not rows:
-        return data
-    td = rows[0].find("td", class_="conj_verb")
-    if td is None:
-        return data
-    text = _td_main_text(td)
-    forms = [f.strip() for f in text.split(",")]
-    if len(forms) >= 4:
-        data["compose"] = text
-        reform_spans = td.find_all("span", class_="forme_rectif")
-        if reform_spans:
-            data["compose_reforms"] = [s.get_text(strip=True) for s in reform_spans]
-    return data
+    for row in rows:
+        td = row.find("td", class_="conj_verb")
+        if td is not None:
+            return {"compound": _participle_forms(td, compound=True)}
+    return {}
 
 
 # ===================================================================
@@ -497,12 +529,23 @@ def _parse_imperative_rows(rows: list[Tag]) -> dict:
         if prefix:
             # Passé tense — prefix is the reflexive pronoun (e.g. "sois-toi ")
             # The verb cell contains the participle (may be gendered: "assis, assise")
+            if has_or and rectif_span is None:
+                main_text, alternative = re.split(r"\s+ou\s+", full_text, maxsplit=1)
+            else:
+                alternative = rectif_span.get_text(strip=True) if rectif_span else ""
             verb_forms = [f.strip().replace("\u00a0", "") for f in main_text.split(",")]
-            masc = verb_forms[0] if verb_forms else ""
+            masc = verb_forms[0]
             fem = verb_forms[1] if len(verb_forms) > 1 else masc
+            variants = [f.strip() for f in alternative.split(",")] if alternative else []
             masc_conj = f"{prefix}{masc}"
+            fem_conj = f"{prefix}{fem}"
+            if variants:
+                masc_conj += f",{prefix}{variants[0]}"
+                if len(variants) > 1:
+                    fem_conj += f",{prefix}{variants[1]}"
+                elif fem == masc:
+                    fem_conj = masc_conj
             if fem != masc:
-                fem_conj = f"{prefix}{fem}"
                 result[person] = None
                 result[person + "_m"] = masc_conj
                 result[person + "_f"] = fem_conj

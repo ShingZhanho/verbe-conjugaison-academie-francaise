@@ -24,9 +24,9 @@ class FrenchVerbDB:
         self.conn.close()
     
     def get_verb_metadata(self, infinitive: str) -> Optional[Dict]:
-        """Get metadata for a verb (h_aspire, reform info)."""
+        """Get metadata for a verb (h_aspire, elision/liaison blocking, reform info)."""
         self.cursor.execute("""
-            SELECT id, infinitif, h_aspire, rectification_1990, rectification_1990_variante
+            SELECT id, infinitif, h_aspire, bloque_elision_liaison, rectification_1990, rectification_1990_variante
             FROM verbes
             WHERE infinitif = ?
         """, (infinitive,))

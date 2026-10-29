@@ -51,7 +51,8 @@ def read_infinitives(filepath: str) -> list[tuple[str, str | None]]:
                 result.append((verb.strip(), verb_id.strip()))
             else:
                 result.append((line, None))
-    return result
+    return [(verb, vid) for verb, vid in result
+            if re.sub(r"_\d+$", "", verb) not in C.EXCLUDED_VERBS]
 
 
 def count_lines(filepath: str) -> int:
@@ -196,6 +197,7 @@ _META_KEYS = frozenset({
     "rectification_1990",
     "rectification_1990_variante",
     "h_aspire",
+    "bloque_elision_liaison",
 })
 
 
@@ -234,7 +236,10 @@ def merge_homonyms(data: dict) -> dict:
     groups: dict[str, list[tuple[str, dict]]] = defaultdict(list)
     passthrough: dict[str, dict] = {}
 
+    renames = {}
     for key, entry in data.items():
+        if _SUFFIX_RE.sub("", key) in C.EXCLUDED_VERBS:
+            continue
         m = _SUFFIX_RE.search(key)
         if m:
             base = key[:m.start()]
@@ -252,6 +257,7 @@ def merge_homonyms(data: dict) -> dict:
             kept_count += 1
             continue
 
+        members.sort(key=lambda member: int(_SUFFIX_RE.search(member[0]).group(1)))
         # Deduplicate: cluster identical / subset entries.
         # Each cluster is represented by its "best" (superset) member.
         clusters: list[tuple[str, dict, dict]] = []  # (key, entry, voices)
@@ -274,6 +280,7 @@ def merge_homonyms(data: dict) -> dict:
         if len(clusters) == 1:
             ck, ce, _ = clusters[0]
             passthrough[base] = ce
+            renames.update({key: base for key, _ in members})
             merged_count += 1
             logger.info("Merged %d homonyms → '%s'", len(members), base)
         else:
@@ -281,6 +288,9 @@ def merge_homonyms(data: dict) -> dict:
             for i, (ck, ce, _) in enumerate(clusters, 1):
                 suffixed = f"{base}_{i}"
                 passthrough[suffixed] = ce
+                for original, entry in members:
+                    if original not in renames and _is_subset(_voice_data(entry), _voice_data(ce)):
+                        renames[original] = suffixed
             kept_count += len(clusters)
             logger.debug(
                 "Kept %d distinct homonyms for '%s'", len(clusters), base,
@@ -290,4 +300,9 @@ def merge_homonyms(data: dict) -> dict:
         "Homonym merge: %d groups merged, %d suffixed entries kept.",
         merged_count, kept_count,
     )
-    return passthrough
+    return {
+        key: {**entry, "rectification_1990_variante":
+              renames.get(entry.get("rectification_1990_variante"),
+                          entry.get("rectification_1990_variante"))}
+        for key, entry in passthrough.items()
+    }
